@@ -121,27 +121,32 @@ export async function POST(req: NextRequest) {
   let tournamentDbId: string | null = null
 
   try {
-    // 1. Load active tournament from DB
+    // 1. Load active tournament from DB (phases loaded separately to avoid FK join issues)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: tournament } = await (supabase as any)
+    const { data: tournament, error: tournamentErr } = await (supabase as any)
       .from("tournaments")
-      .select("id, name, pandascore_id, phases(id, name, order_index)")
+      .select("id, name, pandascore_id")
       .eq("is_active", true)
       .single() as {
-        data: {
-          id: string
-          name: string
-          pandascore_id: string | null
-          phases: Array<{ id: string; name: string; order_index: number }>
-        } | null
+        data: { id: string; name: string; pandascore_id: string | null } | null
+        error: { message: string } | null
       }
 
-    if (!tournament) {
-      return NextResponse.json({ error: "No active tournament in DB" }, { status: 404 })
+    if (tournamentErr || !tournament) {
+      const msg = tournamentErr?.message ?? "No active tournament in DB"
+      console.error("[sync] tournament query failed:", msg)
+      return NextResponse.json({ error: msg }, { status: 404 })
     }
     tournamentDbId = tournament.id
 
-    const sortedPhases = (tournament.phases ?? []).sort((a, b) => a.order_index - b.order_index)
+    // Load phases separately
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: phasesData } = await (supabase as any)
+      .from("phases")
+      .select("id, name, order_index")
+      .eq("tournament_id", tournament.id)
+      .order("order_index")
+    const sortedPhases = (phasesData ?? []) as Array<{ id: string; name: string; order_index: number }>
 
     // 2. Fetch matches from PandaScore
     //    Strategy A: filter by pandascore_id (tournament IDs, comma-separated) if already stored
