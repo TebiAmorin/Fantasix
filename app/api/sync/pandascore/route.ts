@@ -73,13 +73,20 @@ function psFormatLabel(matchType: string, games: number): string {
 }
 
 async function psFetch(path: string, token: string) {
-  const res = await fetch(`${PANDASCORE_BASE}${path}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
-    next: { revalidate: 0 },
-  })
+  const url = `${PANDASCORE_BASE}${path}`
+  let res: Response
+  try {
+    res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "User-Agent": "Fantasix/1.0",
+      },
+    })
+  } catch (e: unknown) {
+    const cause = e instanceof Error && e.cause ? ` [cause: ${JSON.stringify(e.cause)}]` : ""
+    throw new Error(`PandaScore network error fetching ${path}: ${e instanceof Error ? e.message : String(e)}${cause}`)
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => "")
     throw new Error(`PandaScore ${path} → ${res.status}: ${text.slice(0, 200)}`)
