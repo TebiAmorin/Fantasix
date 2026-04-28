@@ -26,18 +26,19 @@ export default async function DraftPage() {
 
   if (!activePhase) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-16 text-center">
-        <p className="text-text-muted text-sm">No active phase right now.</p>
+      <div className="mx-auto max-w-7xl px-4 py-24 text-center space-y-3">
+        <div className="font-display text-5xl text-text-muted/20 tracking-widest">NO ACTIVE PHASE</div>
+        <p className="text-text-muted text-sm">Check back when the next phase opens.</p>
       </div>
     )
   }
 
   if (!activePhase.draft_open) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-16 text-center space-y-2">
-        <h2 className="font-display text-2xl text-text">Draft is closed</h2>
+      <div className="mx-auto max-w-7xl px-4 py-24 text-center space-y-3">
+        <div className="font-display text-5xl text-text-muted/20 tracking-widest">DRAFT CLOSED</div>
         <p className="text-text-muted text-sm">
-          The draft window for <strong>{activePhase.name}</strong> is not open yet.
+          The draft window for <span className="text-text">{activePhase.name}</span> is not open yet.
         </p>
       </div>
     )
@@ -67,28 +68,45 @@ export default async function DraftPage() {
   } | null
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <p className="text-xs text-purple font-medium uppercase tracking-widest mb-1">
-          {tournament?.name} · {activePhase.name}
-        </p>
-        <h1 className="font-display text-3xl text-text">
-          {existingRoster ? "Edit Your Roster" : "Build Your Roster"}
-        </h1>
-        <p className="text-text-muted text-sm mt-1">
-          Pick 5 players within the salary cap of{" "}
-          <span className="text-gold font-medium">{activePhase.salary_cap} pts</span>
-        </p>
+    <div>
+      {/* ── Hero ─────────────────────────────────────────── */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0" style={{background:'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(157,111,255,0.14) 0%, transparent 70%), radial-gradient(ellipse 40% 50% at 90% 60%, rgba(245,200,66,0.07) 0%, transparent 55%), #07080D'}} />
+        <div className="absolute inset-0 grid-fine opacity-30" />
+        <div className="absolute top-0 right-1/3 w-64 h-64 rounded-full bg-purple/8 blur-[90px] pointer-events-none animate-glow-pulse" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
+
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10 pb-12">
+          <div className="space-y-3 animate-fade-up">
+            <div className="badge-eyebrow" style={{color:'#F5C842', borderColor:'rgba(245,200,66,0.25)', backgroundColor:'rgba(245,200,66,0.08)'}}>
+              <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Draft · {tournament?.name}
+            </div>
+            <h1 className="font-display text-4xl sm:text-5xl text-text leading-none">
+              {existingRoster
+                ? <span>Edit <span className="text-glow-purple">Your Roster</span></span>
+                : <span>Build <span className="text-glow-gold">Your Roster</span></span>
+              }
+            </h1>
+            <p className="text-text-muted text-sm tracking-wide">
+              {activePhase.name} · Pick 5 players within the salary cap of{" "}
+              <span className="text-gold font-stats font-bold">{activePhase.salary_cap} pts</span>
+            </p>
+          </div>
+        </div>
       </div>
 
-      <DraftBoard
-        players={players}
-        existingRoster={existingRoster}
-        salaryCap={activePhase.salary_cap}
-        phaseId={activePhase.id}
-        tournamentId={tournament!.id}
-        userId={user.id}
-      />
+      {/* ── Draft board ──────────────────────────────────── */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <DraftBoard
+          players={players}
+          existingRoster={existingRoster}
+          salaryCap={activePhase.salary_cap}
+          phaseId={activePhase.id}
+          tournamentId={tournament!.id}
+          userId={user.id}
+        />
+      </div>
     </div>
   )
 }

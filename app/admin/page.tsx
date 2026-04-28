@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
-import { Trophy, Users, Swords, Settings, ArrowRight, Clock } from "lucide-react"
+import { Trophy, Users, Swords, Settings, ArrowRight, Clock, RefreshCw } from "lucide-react"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = { title: "Admin Dashboard" }
@@ -118,6 +118,7 @@ export default async function AdminDashboard() {
           <h2 className="font-display text-base text-text uppercase tracking-wide">Quick Actions</h2>
           <div className="space-y-2">
             {[
+              { label: "PandaScore Sync",          href: "/admin/sync",           icon: RefreshCw },
               { label: "Create new match",         href: "/admin/matches/new",    icon: Swords },
               { label: "Add players",               href: "/admin/players/new",    icon: Users },
               { label: "Edit scoring matrix",       href: "/admin/scoring",        icon: Settings },

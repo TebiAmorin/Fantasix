@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Shield, Trophy, Users, Swords, Settings, BarChart3, ChevronRight } from "lucide-react"
+import { Shield, Trophy, Users, Swords, Settings, BarChart3, ChevronRight, RefreshCw } from "lucide-react"
 
 const ADMIN_NAV = [
   { href: "/admin",             label: "Dashboard",   icon: BarChart3 },
+  { href: "/admin/sync",        label: "PS Sync",     icon: RefreshCw },
   { href: "/admin/tournaments", label: "Tournaments", icon: Trophy },
   { href: "/admin/teams",       label: "Teams",       icon: Users },
   { href: "/admin/players",     label: "Players",     icon: Users },

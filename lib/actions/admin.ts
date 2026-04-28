@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
@@ -342,4 +343,58 @@ export async function updateScoringConfig(formData: FormData) {
 
   revalidatePath("/admin/scoring")
   return { success: true }
+}
+
+// ── PANDASCORE SYNC ───────────────────────────────────────────────────────────
+
+export async function triggerSync(): Promise<{
+  ok: boolean
+  matches_created?: number
+  matches_updated?: number
+  warning?: string
+  error?: string
+  duration_ms?: number
+}> {
+  await requireAdmin()
+
+  const secret = process.env.SYNC_SECRET
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+
+  if (!secret) return { ok: false, error: "SYNC_SECRET not configured" }
+  if (!process.env.PANDASCORE_TOKEN) return { ok: false, error: "PANDASCORE_TOKEN not configured" }
+
+  try {
+    const res = await fetch(`${appUrl}/api/sync/pandascore`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${secret}` },
+      cache: "no-store",
+    })
+    const data = await res.json()
+    revalidatePath("/admin/sync")
+    revalidatePath("/predictions")
+    return data
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function getSyncLogs() {
+  await requireAdmin()
+  const supabase = createAdminClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any)
+    .from("sync_logs")
+    .select("id, status, matches_created, matches_updated, error_message, duration_ms, triggered_by, synced_at")
+    .order("synced_at", { ascending: false })
+    .limit(20)
+  return (data ?? []) as Array<{
+    id: string
+    status: string
+    matches_created: number
+    matches_updated: number
+    error_message: string | null
+    duration_ms: number | null
+    triggered_by: string
+    synced_at: string
+  }>
 }
