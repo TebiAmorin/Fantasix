@@ -121,31 +121,35 @@ export async function POST(req: NextRequest) {
   let tournamentDbId: string | null = null
 
   try {
-    // 1. Load active tournament from DB (phases loaded separately to avoid FK join issues)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: tournament, error: tournamentErr } = await (supabase as any)
-      .from("tournaments")
-      .select("id, name, pandascore_id")
-      .eq("is_active", true)
-      .single() as {
-        data: { id: string; name: string; pandascore_id: string | null } | null
-        error: { message: string } | null
-      }
+    // 1. Load active tournament via direct REST fetch (bypasses SDK to isolate connectivity issues)
+    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const sbHeaders = { apikey: sbKey, Authorization: `Bearer ${sbKey}`, "Content-Type": "application/json" }
 
-    if (tournamentErr || !tournament) {
-      const msg = tournamentErr?.message ?? "No active tournament in DB"
-      console.error("[sync] tournament query failed:", msg)
-      return NextResponse.json({ error: msg }, { status: 404 })
+    const tRes = await fetch(
+      `${sbUrl}/rest/v1/tournaments?is_active=eq.true&select=id,name,pandascore_id&limit=1`,
+      { headers: sbHeaders, cache: "no-store" }
+    )
+    if (!tRes.ok) {
+      const txt = await tRes.text().catch(() => "")
+      console.error("[sync] tournament REST failed:", tRes.status, txt)
+      return NextResponse.json({ error: `DB tournaments ${tRes.status}: ${txt}` }, { status: 500 })
+    }
+    const tournaments = await tRes.json() as Array<{ id: string; name: string; pandascore_id: string | null }>
+    const tournament = tournaments[0] ?? null
+
+    if (!tournament) {
+      console.error("[sync] no active tournament found")
+      return NextResponse.json({ error: "No active tournament in DB" }, { status: 404 })
     }
     tournamentDbId = tournament.id
 
-    // Load phases separately
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: phasesData } = await (supabase as any)
-      .from("phases")
-      .select("id, name, order_index")
-      .eq("tournament_id", tournament.id)
-      .order("order_index")
+    // Load phases via direct fetch
+    const phRes = await fetch(
+      `${sbUrl}/rest/v1/phases?tournament_id=eq.${tournament.id}&select=id,name,order_index&order=order_index.asc`,
+      { headers: sbHeaders, cache: "no-store" }
+    )
+    const phasesData = phRes.ok ? await phRes.json() : []
     const sortedPhases = (phasesData ?? []) as Array<{ id: string; name: string; order_index: number }>
 
     // 2. Fetch matches from PandaScore
