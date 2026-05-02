@@ -15,7 +15,7 @@ const ADMIN_NAV = [
   { href: "/admin/scoring",     label: "Scoring",     icon: Settings,  exact: false },
 ]
 
-export function AdminNav() {
+export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
 
   return (
@@ -26,17 +26,19 @@ export function AdminNav() {
           <Link
             key={href}
             href={href}
+            onClick={onNavigate}
             className={cn(
-              "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors group",
+              "flex items-center gap-2.5 px-3 py-2 text-sm transition-colors group",
+              "rounded-sm",
               active
-                ? "bg-purple/10 text-purple border border-purple/20"
-                : "text-text-muted hover:text-text hover:bg-white/5"
+                ? "bg-red/8 text-red border border-red/20"
+                : "text-text-muted hover:text-text hover:bg-white/5 border border-transparent"
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
             <span className="flex-1">{label}</span>
             {active ? (
-              <span className="h-1.5 w-1.5 rounded-full bg-purple shrink-0" />
+              <span className="h-1.5 w-1.5 rounded-full bg-red shrink-0" />
             ) : (
               <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />
             )}

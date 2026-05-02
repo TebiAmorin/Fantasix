@@ -14,9 +14,9 @@ export default async function PublicLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-void-mesh noise-overlay">
-      {/* Global subtle grid */}
-      <div className="fixed inset-0 grid-tactical opacity-40 pointer-events-none z-0" />
+    <div className="relative flex flex-col min-h-screen bg-void">
+      {/* Diagonal stripe texture — fixed, low opacity */}
+      <div className="fixed inset-0 bg-tactical-stripe opacity-60 pointer-events-none z-0" />
 
       <Navbar user={profile} />
 
@@ -24,10 +24,10 @@ export default async function PublicLayout({ children }: { children: React.React
         {children}
       </main>
 
-      <footer className="relative z-10 border-t border-purple/8 py-8">
+      <footer className="relative z-10 border-t border-white/6 py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <svg className="h-3.5 w-3.5 text-purple opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg className="h-3.5 w-3.5 text-red opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
             <span className="font-display text-xs text-text-muted tracking-[0.15em]">FANTASIX</span>

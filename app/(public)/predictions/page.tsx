@@ -71,12 +71,11 @@ export default async function PredictionsPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Active tournament
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: tournament } = await (supabase as any)
+  const { data: tournament } = await supabase
     .from("tournaments")
     .select("id, name, slug, location, prize_pool, primary_color, phases(id, name, order_index, is_active, description)")
     .eq("is_active", true)
-    .single() as {
+    .single() as unknown as {
       data: {
         id: string; name: string; slug: string
         location: string | null; prize_pool: number | null; primary_color: string | null
@@ -88,8 +87,7 @@ export default async function PredictionsPage() {
   const activePhase = phases.find(p => p.is_active) ?? null
 
   // All matches
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: rawMatches } = tournament ? await (supabase as any)
+  const { data: rawMatches } = tournament ? await supabase
     .from("matches")
     .select(`
       id, status, format, scheduled_at,
@@ -108,26 +106,21 @@ export default async function PredictionsPage() {
   // User picks
   const picksMap: Record<string, string> = {}
   if (user && matches.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: picks } = await (supabase as any)
+    const { data: picks } = await supabase
       .from("match_predictions")
       .select("match_id, predicted_winner_id")
       .eq("user_id", user.id)
       .in("match_id", matches.map(m => m.id))
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const p of (picks ?? []) as any[]) picksMap[p.match_id] = p.predicted_winner_id
+    for (const p of picks ?? []) picksMap[p.match_id] = p.predicted_winner_id
   }
 
   // Community picks aggregate (for % bars on cards)
   const communityPicksMap: CommunityPicksMap = {}
   if (matches.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: communityRaw } = await (supabase as any)
+    const { data: communityRaw } = await supabase
       .from("match_community_picks")
       .select("match_id, predicted_winner_id, pick_count")
-      .in("match_id", matches.map(m => m.id)) as {
-        data: Array<{ match_id: string; predicted_winner_id: string; pick_count: number }> | null
-      }
+      .in("match_id", matches.map(m => m.id))
     for (const row of communityRaw ?? []) {
       if (!communityPicksMap[row.match_id]) communityPicksMap[row.match_id] = {}
       communityPicksMap[row.match_id][row.predicted_winner_id] = row.pick_count
@@ -137,12 +130,11 @@ export default async function PredictionsPage() {
   // User stats
   let userStats: { correct: number; total: number; points: number; streak: number } | null = null
   if (user) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: row } = await (supabase as any)
+    const { data: row } = await supabase
       .from("pickem_leaderboard")
       .select("total_points, correct_picks, resolved_picks, current_streak")
       .eq("user_id", user.id)
-      .single() as { data: { total_points: number; correct_picks: number; resolved_picks: number; current_streak: number } | null }
+      .single()
     if (row) userStats = {
       points:  row.total_points   ?? 0,
       correct: row.correct_picks  ?? 0,
@@ -152,19 +144,12 @@ export default async function PredictionsPage() {
   }
 
   // Leaderboard
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: leaderboard } = await (supabase as any)
+  const { data: leaderboard } = await supabase
     .from("pickem_leaderboard")
     .select("user_id, username, avatar_url, total_points, correct_picks, resolved_picks, accuracy_pct, current_streak")
     .order("total_points", { ascending: false })
     .order("accuracy_pct", { ascending: false })
-    .limit(10) as {
-      data: Array<{
-        user_id: string; username: string; avatar_url: string | null
-        total_points: number; correct_picks: number; resolved_picks: number
-        accuracy_pct: number; current_streak: number
-      }> | null
-    }
+    .limit(10)
 
   const liveCount    = matches.filter(m => m.status === "live").length
   const totalPicked  = Object.keys(picksMap).length
@@ -265,7 +250,7 @@ export default async function PredictionsPage() {
                   {[
                     { label: "Points",   value: String(userStats.points),              color: "#F5C842" },
                     { label: "Correct",  value: `${userStats.correct}/${userStats.total}`, color: "#EEF2FF" },
-                    { label: "Accuracy", value: `${accuracy}%`,                        color: accuracy >= 60 ? "#34D399" : "#9D6FFF" },
+                    { label: "Accuracy", value: `${accuracy}%`,                        color: accuracy >= 60 ? "#34D399" : "rgba(255,255,255,0.45)" },
                     { label: "Streak",   value: String(userStats.streak),              color: userStats.streak >= 2 ? "#F5C842" : "#6B7280", streak: userStats.streak },
                   ].map(({ label, value, color, streak }, i) => (
                     <div key={label} className="flex items-center">

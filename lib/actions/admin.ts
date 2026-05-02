@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import type { PhaseType, MatchFormat } from "@/lib/types/database.types"
 
 // ── Guard ────────────────────────────────────────────────────────────────────
 
@@ -12,8 +13,7 @@ async function requireAdmin() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthenticated")
   const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((data as any)?.role !== "admin") throw new Error("Forbidden")
+  if (data?.role !== "admin") throw new Error("Forbidden")
   return supabase
 }
 
@@ -37,12 +37,9 @@ export async function upsertTeam(formData: FormData) {
     logo_url:   logoUrl || null,
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? await (supabase as any).from("teams").update(payload).eq("id", id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    : await (supabase as any).from("teams").insert(payload)
+    ? await supabase.from("teams").update(payload).eq("id", id)
+    : await supabase.from("teams").insert(payload)
 
   if (error) throw new Error(error.message)
 
@@ -53,8 +50,7 @@ export async function upsertTeam(formData: FormData) {
 
 export async function deleteTeam(id: string) {
   const supabase = await requireAdmin()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from("teams").delete().eq("id", id)
+  const { error } = await supabase.from("teams").delete().eq("id", id)
   if (error) return { error: error.message }
   revalidatePath("/admin/teams")
   return { success: true }
@@ -86,12 +82,9 @@ export async function upsertPlayer(formData: FormData) {
     fantasy_cost: cost,
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? await (supabase as any).from("players").update(payload).eq("id", id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    : await (supabase as any).from("players").insert(payload)
+    ? await supabase.from("players").update(payload).eq("id", id)
+    : await supabase.from("players").insert(payload)
 
   if (error) throw new Error(error.message)
 
@@ -102,8 +95,7 @@ export async function upsertPlayer(formData: FormData) {
 
 export async function deletePlayer(id: string) {
   const supabase = await requireAdmin()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from("players").delete().eq("id", id)
+  const { error } = await supabase.from("players").delete().eq("id", id)
   if (error) return { error: error.message }
   revalidatePath("/admin/players")
   return { success: true }
@@ -126,8 +118,7 @@ export async function upsertTournament(formData: FormData) {
 
   // If setting active, deactivate others first
   if (isActive) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("tournaments").update({ is_active: false }).neq("id", id ?? "")
+    await supabase.from("tournaments").update({ is_active: false }).neq("id", id ?? "")
   }
 
   const payload = {
@@ -139,12 +130,9 @@ export async function upsertTournament(formData: FormData) {
     logo_url:   logoUrl || null,
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? await (supabase as any).from("tournaments").update(payload).eq("id", id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    : await (supabase as any).from("tournaments").insert(payload)
+    ? await supabase.from("tournaments").update(payload).eq("id", id)
+    : await supabase.from("tournaments").insert(payload)
 
   if (error) throw new Error(error.message)
 
@@ -170,30 +158,34 @@ export async function upsertPhase(formData: FormData) {
 
   // Only one phase active at a time per tournament
   if (isActive) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    await supabase
       .from("phases")
       .update({ is_active: false })
       .eq("tournament_id", tournamentId)
       .neq("id", id ?? "")
   }
 
-  const payload = {
+  const insertPayload = {
     tournament_id: tournamentId,
     name:          name.trim(),
-    type,
+    type:          type as PhaseType,
     order_index:   orderIndex,
     salary_cap:    salaryCap,
     is_active:     isActive,
     draft_open:    draftOpen,
   }
+  const updatePayload = {
+    name:        name.trim(),
+    type:        type as PhaseType,
+    order_index: orderIndex,
+    salary_cap:  salaryCap,
+    is_active:   isActive,
+    draft_open:  draftOpen,
+  }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? await (supabase as any).from("phases").update(payload).eq("id", id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    : await (supabase as any).from("phases").insert(payload)
+    ? await supabase.from("phases").update(updatePayload).eq("id", id)
+    : await supabase.from("phases").insert(insertPayload)
 
   if (error) throw new Error(error.message)
 
@@ -212,29 +204,32 @@ export async function upsertMatch(formData: FormData) {
   const phaseId       = formData.get("phase_id") as string
   const teamAId       = formData.get("team_a_id") as string
   const teamBId       = formData.get("team_b_id") as string
-  const format        = formData.get("format") as string
+  const format        = (formData.get("format") || "bo3") as MatchFormat
   const scheduledAt   = formData.get("scheduled_at") as string
   const externalUrl   = formData.get("external_stats_url") as string
 
   if (!teamAId || !teamBId) throw new Error("Both teams are required")
   if (teamAId === teamBId)  throw new Error("Teams must be different")
 
-  const payload = {
+  const insertPayload = {
     tournament_id:      tournamentId,
     phase_id:           phaseId || null,
     team_a_id:          teamAId,
     team_b_id:          teamBId,
-    format:             format || "bo3",
+    format,
+    scheduled_at:       scheduledAt || null,
+    external_stats_url: externalUrl?.trim() || null,
+  }
+  const updatePayload = {
+    phase_id:           phaseId || null,
+    format,
     scheduled_at:       scheduledAt || null,
     external_stats_url: externalUrl?.trim() || null,
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? await (supabase as any).from("matches").update(payload).eq("id", id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    : await (supabase as any).from("matches").insert(payload)
+    ? await supabase.from("matches").update(updatePayload).eq("id", id)
+    : await supabase.from("matches").insert(insertPayload)
 
   if (error) throw new Error(error.message)
 
@@ -252,18 +247,16 @@ export async function setMatchResult(formData: FormData) {
   const externalUrl = formData.get("external_stats_url") as string
 
   // Fetch team names before updating (for push copy)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: match } = await (supabase as any)
+  const { data: match } = await supabase
     .from("matches")
     .select(`
       team_a:teams!matches_team_a_id_fkey(short_name),
       team_b:teams!matches_team_b_id_fkey(short_name)
     `)
     .eq("id", matchId)
-    .single() as { data: { team_a: { short_name: string }; team_b: { short_name: string } } | null }
+    .single() as unknown as { data: { team_a: { short_name: string }; team_b: { short_name: string } } | null }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("matches")
     .update({
       winner_id:          winnerId,
@@ -307,18 +300,16 @@ export async function setMatchLive(matchId: string) {
   const supabase = await requireAdmin()
 
   // Grab team names for the push notification copy
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: match } = await (supabase as any)
+  const { data: match } = await supabase
     .from("matches")
     .select(`
       team_a:teams!matches_team_a_id_fkey(short_name),
       team_b:teams!matches_team_b_id_fkey(short_name)
     `)
     .eq("id", matchId)
-    .single() as { data: { team_a: { short_name: string }; team_b: { short_name: string } } | null }
+    .single() as unknown as { data: { team_a: { short_name: string }; team_b: { short_name: string } } | null }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("matches").update({ status: "live" }).eq("id", matchId)
+  await supabase.from("matches").update({ status: "live" }).eq("id", matchId)
   revalidatePath("/admin/matches")
   revalidatePath("/predictions")
 
@@ -346,8 +337,7 @@ export async function setMatchLive(matchId: string) {
 
 export async function setMatchScheduled(matchId: string) {
   const supabase = await requireAdmin()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
+  await supabase
     .from("matches")
     .update({ status: "scheduled", winner_id: null, team_a_maps_won: 0, team_b_maps_won: 0 })
     .eq("id", matchId)
@@ -384,8 +374,7 @@ export async function upsertPlayerStats(formData: FormData) {
   }
 
   // Upsert (insert or update if stats already exist)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("player_match_stats")
     .upsert(payload, { onConflict: "match_id,player_id" })
 
@@ -410,8 +399,7 @@ export async function updateScoringConfig(formData: FormData) {
   }
 
   for (const update of updates) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("scoring_config")
       .update({ value: update.value, updated_at: new Date().toISOString() })
       .eq("stat_key", update.stat_key)
@@ -458,20 +446,10 @@ export async function triggerSync(): Promise<{
 export async function getSyncLogs() {
   await requireAdmin()
   const supabase = createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data } = await (supabase as any)
+  const { data } = await supabase
     .from("sync_logs")
     .select("id, status, matches_created, matches_updated, error_message, duration_ms, triggered_by, synced_at")
     .order("synced_at", { ascending: false })
     .limit(20)
-  return (data ?? []) as Array<{
-    id: string
-    status: string
-    matches_created: number
-    matches_updated: number
-    error_message: string | null
-    duration_ms: number | null
-    triggered_by: string
-    synced_at: string
-  }>
+  return data ?? []
 }

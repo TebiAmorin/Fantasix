@@ -19,18 +19,6 @@ export const metadata: Metadata = {
 
 export const revalidate = 60
 
-interface PickemRow {
-  user_id: string
-  username: string
-  avatar_url: string | null
-  total_points: number
-  correct_picks: number
-  resolved_picks: number
-  accuracy_pct: number
-  current_streak: number
-}
-
-
 export default async function LeaderboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -39,22 +27,30 @@ export default async function LeaderboardPage() {
     { data: pickem },
     { data: tournament },
   ] = await Promise.all([
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any)
+    supabase
       .from("pickem_leaderboard")
       .select("user_id, username, avatar_url, total_points, correct_picks, resolved_picks, accuracy_pct, current_streak")
       .order("total_points", { ascending: false })
       .order("accuracy_pct", { ascending: false })
-      .limit(100) as Promise<{ data: PickemRow[] | null }>,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any)
+      .limit(100),
+    supabase
       .from("tournaments")
       .select("name")
       .eq("is_active", true)
-      .single() as Promise<{ data: { name: string } | null }>,
+      .single(),
   ])
 
-  const pickemRows = pickem ?? []
+  // Coerce nullable view fields to non-null with fallbacks for the component
+  const pickemRows = (pickem ?? []).map(r => ({
+    user_id:        r.user_id        ?? "",
+    username:       r.username       ?? "",
+    avatar_url:     r.avatar_url,
+    total_points:   r.total_points   ?? 0,
+    correct_picks:  r.correct_picks  ?? 0,
+    resolved_picks: r.resolved_picks ?? 0,
+    accuracy_pct:   r.accuracy_pct   ?? 0,
+    current_streak: r.current_streak ?? 0,
+  }))
   const myPickemRank = pickemRows.findIndex(r => r.user_id === user?.id) + 1
 
   return (
@@ -122,7 +118,7 @@ export default async function LeaderboardPage() {
               <h2 className="font-display text-lg text-text uppercase tracking-wide">Pick&apos;Em</h2>
               <p className="text-xs text-text-muted">1 point per correct match prediction</p>
             </div>
-            <Link href="/predictions" className="text-xs text-purple hover:text-purple/80 transition-colors">
+            <Link href="/predictions" className="text-xs text-text-muted hover:text-text transition-colors">
               Make picks →
             </Link>
           </div>

@@ -169,7 +169,7 @@ export function MatchResultForm({
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://siege.gg/matches/..."
-          className="w-full h-8 rounded border border-white/8 bg-surface px-3 text-xs font-mono text-text focus:outline-none focus:border-purple/50"
+          className="w-full h-8 rounded border border-white/8 bg-surface px-3 text-xs font-mono text-text focus:outline-none focus:border-red/30"
         />
       </div>
 

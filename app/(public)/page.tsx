@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import Image from "next/image"
 import { CountdownHero } from "@/components/home/countdown-hero"
+import { EVENT_END } from "@/lib/constants"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -25,42 +26,49 @@ export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: tournament } = await (supabase as any)
+  const { data: tournament } = await supabase
     .from("tournaments")
     .select("id, name, prize_pool, location")
     .eq("is_active", true)
-    .single() as { data: { id: string; name: string; prize_pool: number | null; location: string | null } | null }
+    .single()
 
   const [
     { data: teams },
     { data: topPicks },
     { data: liveMatches },
   ] = await Promise.all([
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any)
+    supabase
       .from("teams")
       .select("id, short_name, name, logo_url, region")
       .eq("is_active", true)
       .order("region")
-      .order("name") as Promise<{ data: Array<{ id: string; short_name: string; name: string; logo_url: string | null; region: string }> | null }>,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any)
+      .order("name"),
+    supabase
       .from("pickem_leaderboard")
       .select("user_id, username, avatar_url, total_points, correct_picks, resolved_picks, accuracy_pct")
       .order("total_points", { ascending: false })
-      .limit(5) as Promise<{ data: Array<{ user_id: string; username: string; avatar_url: string | null; total_points: number; correct_picks: number; resolved_picks: number; accuracy_pct: number }> | null }>,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tournament ? (supabase as any)
-      .from("matches")
-      .select("id")
-      .eq("status", "live")
-      .limit(10) as Promise<{ data: Array<{ id: string }> | null }>
-      : Promise.resolve({ data: null }),
+      .limit(5),
+    tournament
+      ? supabase
+          .from("matches")
+          .select("id")
+          .eq("status", "live")
+          .limit(10)
+      : Promise.resolve({ data: null, error: null, count: null, status: 200, statusText: "OK" }),
   ])
 
+  const isPostEvent = Date.now() > EVENT_END.getTime()
   const teamList   = teams ?? []
-  const leaderRows = topPicks ?? []
+  // Coerce nullable view fields
+  const leaderRows = (topPicks ?? []).map(r => ({
+    user_id:       r.user_id       ?? "",
+    username:      r.username      ?? "",
+    avatar_url:    r.avatar_url,
+    total_points:  r.total_points  ?? 0,
+    correct_picks: r.correct_picks ?? 0,
+    resolved_picks:r.resolved_picks?? 0,
+    accuracy_pct:  r.accuracy_pct  ?? 0,
+  }))
   const liveCount  = liveMatches?.length ?? 0
   const prizePool  = tournament?.prize_pool
 
@@ -144,7 +152,7 @@ export default async function HomePage() {
                   Pick match winners. Climb the global leaderboard. Compete across 20 teams and 3 phases at the BLAST Major SLC 2026.
                 </p>
                 <p className="font-display text-xs tracking-[0.25em] text-center lg:text-left" style={{ color: "rgba(0,212,184,0.5)" }}>
-                  FORGED THE HARD WAY · MAY 8–17
+                  {isPostEvent ? "FORGED THE HARD WAY · SLC 2026" : "FORGED THE HARD WAY · MAY 8–17"}
                 </p>
               </div>
 
@@ -210,7 +218,7 @@ export default async function HomePage() {
                 }}
               >
                 <p className="text-[9px] text-text-dim uppercase tracking-[0.3em] font-display text-center">
-                  {liveCount > 0 ? "Event is live" : "Picks open in"}
+                  {isPostEvent ? "Event ended" : liveCount > 0 ? "Event is live" : "Picks open in"}
                 </p>
                 <div className="flex justify-center">
                   <CountdownHero />
@@ -244,11 +252,11 @@ export default async function HomePage() {
                           <span className={`font-stats text-xs font-bold w-4 text-center shrink-0 ${medals[i] ?? "text-text-dim"}`}>
                             {i + 1}
                           </span>
-                          <div className="h-6 w-6 rounded-full bg-purple/15 border border-purple/20 overflow-hidden shrink-0 flex items-center justify-center">
+                          <div className="h-6 w-6 rounded-full bg-red/10 border border-red/20 overflow-hidden shrink-0 flex items-center justify-center">
                             {row.avatar_url ? (
                               <Image src={row.avatar_url} alt={row.username} width={24} height={24} className="object-cover" />
                             ) : (
-                              <span className="font-display text-purple text-[8px] font-bold">{row.username.slice(0, 2).toUpperCase()}</span>
+                              <span className="font-display text-red text-[8px] font-bold">{row.username.slice(0, 2).toUpperCase()}</span>
                             )}
                           </div>
                           <span className={`text-xs flex-1 truncate font-medium ${isMe ? "text-gold" : "text-text"}`}>
@@ -297,7 +305,7 @@ export default async function HomePage() {
           HOW IT WORKS
       ═══════════════════════════════════════════════════════ */}
       <section className="relative py-28">
-        <div className="absolute inset-0 grid-fine opacity-[0.12]" />
+        <div className="absolute inset-0 bg-tactical-stripe pointer-events-none" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-14">
 
           <div className="text-center space-y-3">
@@ -396,7 +404,7 @@ export default async function HomePage() {
       ═══════════════════════════════════════════════════════ */}
       <section className="relative py-24 border-t border-white/4">
         <div className="absolute inset-x-0 top-0 h-px"
-          style={{ background: "linear-gradient(to right, transparent, rgba(157,111,255,0.2), transparent)" }} />
+          style={{ background: "linear-gradient(to right, transparent, rgba(196,30,58,0.25), transparent)" }} />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
 
           <div className="text-center space-y-2">
@@ -409,9 +417,11 @@ export default async function HomePage() {
           <div className="space-y-8">
             {REGIONS.map(({ label, teams: regionTeams }) => {
               const dbTeams = teamList.filter(t =>
-                regionTeams.some(s => t.short_name.toUpperCase() === s.toUpperCase())
+                regionTeams.some(s => (t.short_name ?? "").toUpperCase() === s.toUpperCase())
               )
-              const display = dbTeams.length > 0 ? dbTeams : regionTeams.map(s => ({ id: s, short_name: s, name: s, logo_url: null, region: label }))
+              const display = dbTeams.length > 0
+                ? dbTeams.map(t => ({ ...t, short_name: t.short_name ?? t.name }))
+                : regionTeams.map(s => ({ id: s, short_name: s, name: s, logo_url: null, region: label }))
 
               return (
                 <div key={label} className="space-y-3">
@@ -430,8 +440,8 @@ export default async function HomePage() {
                             className="object-contain"
                           />
                         ) : (
-                          <div className="h-5 w-5 rounded bg-purple/15 border border-purple/20 flex items-center justify-center">
-                            <span className="font-display text-purple text-[7px] font-bold leading-none">
+                          <div className="h-5 w-5 rounded bg-red/10 border border-red/20 flex items-center justify-center">
+                            <span className="font-display text-red text-[7px] font-bold leading-none">
                               {team.short_name.slice(0, 2).toUpperCase()}
                             </span>
                           </div>
@@ -456,27 +466,54 @@ export default async function HomePage() {
             background: "radial-gradient(ellipse 60% 80% at 50% 50%, rgba(245,200,66,0.05) 0%, transparent 70%), #07080D",
           }} />
           <div className="relative mx-auto max-w-2xl px-4 text-center space-y-8">
-            <h2 className="font-display text-4xl sm:text-5xl text-text tracking-tight leading-tight">
-              Ready to <span className="text-gold text-glow-gold">compete?</span>
-            </h2>
-            <p className="text-text-muted text-base">
-              Create your free account and start predicting before May 8.
-            </p>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-3 rounded-full px-8 py-4 text-sm font-display font-bold uppercase tracking-wider transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97]"
-              style={{
-                background: "linear-gradient(135deg, rgba(245,200,66,0.95) 0%, rgba(245,180,40,1) 100%)",
-                color: "#07080D",
-                boxShadow: "0 0 0 1px rgba(245,200,66,0.4), 0 8px 32px rgba(245,200,66,0.3)",
-              }}
-            >
-              Join for free
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-            <p className="text-xs text-text-muted/50">No credit card · Free forever</p>
+            {isPostEvent ? (
+              <>
+                <h2 className="font-display text-4xl sm:text-5xl text-text tracking-tight leading-tight">
+                  See how you <span className="text-gold">ranked</span>
+                </h2>
+                <p className="text-text-muted text-base">
+                  The BLAST Major SLC 2026 is over. Check the final standings and your pick accuracy.
+                </p>
+                <Link
+                  href="/leaderboard"
+                  className="inline-flex items-center gap-3 rounded-full px-8 py-4 text-sm font-display font-bold uppercase tracking-wider transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97]"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(245,200,66,0.95) 0%, rgba(245,180,40,1) 100%)",
+                    color: "#07080D",
+                    boxShadow: "0 0 0 1px rgba(245,200,66,0.4), 0 8px 32px rgba(245,200,66,0.3)",
+                  }}
+                >
+                  View final leaderboard
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </>
+            ) : (
+              <>
+                <h2 className="font-display text-4xl sm:text-5xl text-text tracking-tight leading-tight">
+                  Ready to <span className="text-gold">compete?</span>
+                </h2>
+                <p className="text-text-muted text-base">
+                  Create your free account and start predicting before May 8.
+                </p>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-3 rounded-full px-8 py-4 text-sm font-display font-bold uppercase tracking-wider transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97]"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(245,200,66,0.95) 0%, rgba(245,180,40,1) 100%)",
+                    color: "#07080D",
+                    boxShadow: "0 0 0 1px rgba(245,200,66,0.4), 0 8px 32px rgba(245,200,66,0.3)",
+                  }}
+                >
+                  Join for free
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </Link>
+                <p className="text-xs text-text-muted/50">No credit card · Free forever</p>
+              </>
+            )}
           </div>
         </section>
       )}

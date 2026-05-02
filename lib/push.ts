@@ -18,8 +18,7 @@ export interface PushPayload {
 /** Send a push to every subscriber. Silently removes stale endpoints. */
 export async function sendPushToAll(payload: PushPayload) {
   const supabase = createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: subs } = await (supabase as any)
+  const { data: subs } = await supabase
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")
 
@@ -47,8 +46,7 @@ export async function sendPushToAll(payload: PushPayload) {
 
   // Clean up dead subscriptions
   if (staleIds.length) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("push_subscriptions").delete().in("id", staleIds)
+    await supabase.from("push_subscriptions").delete().in("id", staleIds)
   }
 
   return { sent, removed: staleIds.length }

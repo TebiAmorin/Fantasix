@@ -22,11 +22,8 @@ export default function SettingsPage() {
     <div>
       {/* Hero */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: "radial-gradient(ellipse 60% 80% at 20% 50%, rgba(157,111,255,0.09) 0%, transparent 60%), #07080D",
-        }} />
-        <div className="absolute inset-0 grid-fine opacity-20 pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-purple/20 to-transparent" />
+        <div className="absolute inset-0 bg-tactical-stripe opacity-60 pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-red/20 to-transparent" />
 
         <div className="relative z-10 mx-auto max-w-xl px-4 sm:px-6 pt-10 pb-12">
           <div className="space-y-3 animate-fade-up">
@@ -44,12 +41,12 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-xl px-4 sm:px-6 py-8">
         {loading ? (
           <div className="py-16 flex justify-center">
-            <div className="h-5 w-5 rounded-full border-2 border-purple/30 border-t-purple animate-spin" />
+            <div className="h-5 w-5 rounded-full border-2 border-white/20 border-t-white/70 animate-spin" />
           </div>
         ) : !profile ? (
           <div className="py-16 text-center space-y-4">
             <p className="text-sm text-text-muted">You must be signed in to access settings.</p>
-            <Link href="/login" className="text-xs text-purple hover:underline">Sign in →</Link>
+            <Link href="/login" className="text-xs text-red hover:text-red/80 transition-colors">Sign in →</Link>
           </div>
         ) : (
           <SettingsForm
@@ -129,13 +126,13 @@ function SettingsForm({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="group relative h-16 w-16 rounded-[18px] overflow-hidden shrink-0 border border-purple/20 bg-purple/10 hover:border-purple/40 transition-all duration-300"
+            className="group relative h-16 w-16 rounded-[18px] overflow-hidden shrink-0 border border-red/15 bg-red/8 hover:border-red/30 transition-all duration-300"
           >
             {preview ? (
               <Image src={preview} alt="Avatar" fill className="object-cover" sizes="64px" />
             ) : (
               <div className="h-full w-full flex items-center justify-center">
-                <User className="h-7 w-7 text-purple/60" />
+                <User className="h-7 w-7 text-red/50" />
               </div>
             )}
             {/* Hover overlay */}
@@ -156,7 +153,7 @@ function SettingsForm({
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
             <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadPending}
-              className="text-xs text-purple hover:text-purple/80 transition-colors disabled:opacity-50">
+              className="text-xs text-text-muted hover:text-text transition-colors disabled:opacity-50">
               {uploadPending ? "Uploading…" : "Upload photo"}
             </button>
             <p className="text-[10px] text-text-dim">JPG, PNG, WebP · Max 2 MB</p>
@@ -171,7 +168,7 @@ function SettingsForm({
             value={avatarUrl}
             onChange={e => { setAvatarUrl(e.target.value); setPreview(e.target.value || null) }}
             placeholder="https://..."
-            className="w-full h-9 px-3 rounded-lg text-xs text-text bg-white/4 border border-white/8 focus:border-purple/40 focus:outline-none placeholder:text-text-dim transition-colors"
+            className="w-full h-9 px-3 rounded-lg text-xs text-text bg-white/4 border border-white/8 focus:border-red/30 focus:outline-none placeholder:text-text-dim transition-colors"
           />
         </div>
       </div>
@@ -188,7 +185,7 @@ function SettingsForm({
             minLength={3}
             maxLength={20}
             required
-            className="w-full h-10 px-3 rounded-lg text-sm text-text bg-white/4 border border-white/8 focus:border-purple/40 focus:outline-none transition-colors"
+            className="w-full h-10 px-3 rounded-lg text-sm text-text bg-white/4 border border-white/8 focus:border-red/30 focus:outline-none transition-colors"
           />
           <p className="text-[10px] text-text-dim">3–20 characters · Letters, numbers, underscores</p>
         </div>

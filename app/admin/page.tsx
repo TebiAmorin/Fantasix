@@ -21,8 +21,7 @@ export default async function AdminDashboard() {
     supabase.from("players").select("*", { count: "exact", head: true }),
     supabase.from("matches").select("*", { count: "exact", head: true }),
     supabase.from("tournaments").select("name").eq("is_active", true).single(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any)
+    supabase
       .from("matches")
       .select(`
         id, scheduled_at,
@@ -31,7 +30,7 @@ export default async function AdminDashboard() {
       `)
       .eq("status", "scheduled")
       .order("scheduled_at")
-      .limit(5) as Promise<{ data: Array<{ id: string; scheduled_at: string | null; team_a: { short_name: string } | null; team_b: { short_name: string } | null }> | null }>,
+      .limit(5) as unknown as Promise<{ data: Array<{ id: string; scheduled_at: string | null; team_a: { short_name: string } | null; team_b: { short_name: string } | null }> | null }>,
   ])
 
   const activeTournamentName = (activeTournament as { name?: string } | null)?.name

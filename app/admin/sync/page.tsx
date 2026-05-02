@@ -11,51 +11,32 @@ export default async function SyncPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = await (supabase as any).from("profiles").select("role").eq("id", user.id).single()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((profile as any)?.role !== "admin") redirect("/")
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+  if (profile?.role !== "admin") redirect("/")
 
   // Load active tournament
   const adminClient = createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: tournament } = await (adminClient as any)
+  const { data: tournament } = await adminClient
     .from("tournaments")
     .select("id, name, pandascore_id, last_synced_at")
     .eq("is_active", true)
-    .single() as {
-      data: { id: string; name: string; pandascore_id: string | null; last_synced_at: string | null } | null
-    }
+    .single()
 
   // Load sync logs
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: logs } = await (adminClient as any)
+  const { data: logs } = await adminClient
     .from("sync_logs")
     .select("id, status, matches_created, matches_updated, error_message, duration_ms, triggered_by, synced_at")
     .order("synced_at", { ascending: false })
-    .limit(25) as {
-      data: Array<{
-        id: string
-        status: string
-        matches_created: number
-        matches_updated: number
-        error_message: string | null
-        duration_ms: number | null
-        triggered_by: string
-        synced_at: string
-      }> | null
-    }
+    .limit(25)
 
   // Match counts by status
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: matchCounts } = tournament ? await (adminClient as any)
+  const { data: matchCounts } = tournament ? await adminClient
     .from("matches")
     .select("status")
     .eq("tournament_id", tournament.id)
     : { data: null }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const counts = (matchCounts ?? []) as any[]
+  const counts = (matchCounts ?? [])
   const statusCounts = {
     scheduled:  counts.filter(m => m.status === "scheduled").length,
     live:       counts.filter(m => m.status === "live").length,

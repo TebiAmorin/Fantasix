@@ -45,7 +45,7 @@ export function MatchForm({ teams, tournament, match }: MatchFormProps) {
             name="team_a_id"
             defaultValue={match?.team_a_id ?? ""}
             required
-            className="w-full h-9 rounded-md border border-white/8 bg-surface px-3 text-sm text-text focus:outline-none focus:border-purple/50"
+            className="w-full h-9 rounded-md border border-white/8 bg-surface px-3 text-sm text-text focus:outline-none focus:border-red/30"
           >
             <option value="">— Select team —</option>
             {teams.map((t) => (
@@ -63,7 +63,7 @@ export function MatchForm({ teams, tournament, match }: MatchFormProps) {
             name="team_b_id"
             defaultValue={match?.team_b_id ?? ""}
             required
-            className="w-full h-9 rounded-md border border-white/8 bg-surface px-3 text-sm text-text focus:outline-none focus:border-purple/50"
+            className="w-full h-9 rounded-md border border-white/8 bg-surface px-3 text-sm text-text focus:outline-none focus:border-red/30"
           >
             <option value="">— Select team —</option>
             {teams.map((t) => (
@@ -104,7 +104,7 @@ export function MatchForm({ teams, tournament, match }: MatchFormProps) {
             id="phase_id"
             name="phase_id"
             defaultValue={match?.phase_id ?? ""}
-            className="w-full h-9 rounded-md border border-white/8 bg-surface px-3 text-sm text-text focus:outline-none focus:border-purple/50"
+            className="w-full h-9 rounded-md border border-white/8 bg-surface px-3 text-sm text-text focus:outline-none focus:border-red/30"
           >
             <option value="">— No phase —</option>
             {phases.map((p) => (

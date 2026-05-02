@@ -38,12 +38,11 @@ export default async function ProfilePage({
   const supabase = await createClient()
 
   // Load profile
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = await (supabase as any)
+  const { data: profile } = await supabase
     .from("profiles")
     .select("id, username, avatar_url, created_at")
     .eq("username", username)
-    .single() as { data: { id: string; username: string; avatar_url: string | null; created_at: string } | null }
+    .single()
 
   if (!profile) notFound()
 
@@ -51,28 +50,25 @@ export default async function ProfilePage({
   const isOwn = user?.id === profile.id
 
   // Pick'Em stats
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pickemStats } = await (supabase as any)
+  const { data: pickemStats } = await supabase
     .from("pickem_leaderboard")
     .select("total_points, correct_picks, resolved_picks, accuracy_pct, current_streak")
     .eq("user_id", profile.id)
-    .single() as { data: { total_points: number; correct_picks: number; resolved_picks: number; accuracy_pct: number; current_streak: number } | null }
+    .single()
 
   // Pick'Em rank — count how many users score strictly higher
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let pickemRank: number | null = null
   if (pickemStats) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count } = await (supabase as any)
+    const { count } = await supabase
       .from("pickem_leaderboard")
       .select("*", { count: "exact", head: true })
-      .gt("total_points", pickemStats.total_points) as { count: number | null }
+      .gt("total_points", pickemStats.total_points)
     pickemRank = (count ?? 0) + 1
   }
 
   // Phase breakdown (all resolved picks grouped by phase)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: rawPhaseData } = await (supabase as any)
+  type PhaseBreakdown = { id: string; name: string; order_index: number; correct: number; total: number }
+  const { data: rawPhaseData } = await supabase
     .from("match_predictions")
     .select(`
       is_correct,
@@ -81,14 +77,13 @@ export default async function ProfilePage({
       )
     `)
     .eq("user_id", profile.id)
-    .not("is_correct", "is", null) as {
+    .not("is_correct", "is", null) as unknown as {
       data: Array<{
         is_correct: boolean
         match: { phase: { id: string; name: string; order_index: number } | null } | null
       }> | null
     }
 
-  type PhaseBreakdown = { id: string; name: string; order_index: number; correct: number; total: number }
   const phaseMap = new Map<string, PhaseBreakdown>()
   for (const pred of rawPhaseData ?? []) {
     const phase = pred.match?.phase
@@ -111,8 +106,17 @@ export default async function ProfilePage({
     .sort((a, b) => a.order_index - b.order_index)
 
   // Recent predictions (last 10 resolved)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: rawPredictions } = await (supabase as any)
+  type PredRow = {
+    id: string; is_correct: boolean | null; points_earned: number
+    predicted_winner: { short_name: string; logo_url: string | null } | null
+    matches: {
+      status: string; format: string; team_a_maps_won: number; team_b_maps_won: number
+      team_a: { short_name: string; logo_url: string | null } | null
+      team_b: { short_name: string; logo_url: string | null } | null
+      winner: { short_name: string } | null
+    } | null
+  }
+  const { data: rawPredictions } = await supabase
     .from("match_predictions")
     .select(`
       id, is_correct, points_earned,
@@ -125,7 +129,7 @@ export default async function ProfilePage({
     .eq("user_id", profile.id)
     .not("is_correct", "is", null)
     .order("created_at", { ascending: false })
-    .limit(10) as { data: any[] | null }
+    .limit(10) as unknown as { data: PredRow[] | null }
 
   const predictions = rawPredictions ?? []
 
@@ -133,21 +137,30 @@ export default async function ProfilePage({
     <div>
       {/* ── Hero ─────────────────────────────────────────── */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0" style={{background:'radial-gradient(ellipse 60% 80% at 20% 50%, rgba(157,111,255,0.12) 0%, transparent 60%), radial-gradient(ellipse 40% 60% at 80% 30%, rgba(245,200,66,0.06) 0%, transparent 55%), #07080D'}} />
-        <div className="absolute inset-0 grid-fine opacity-30" />
-        <div className="absolute top-0 left-1/3 w-64 h-64 rounded-full bg-purple/8 blur-[100px] pointer-events-none animate-glow-pulse" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-purple/20 to-transparent" />
+        <div className="absolute inset-0 bg-tactical-stripe pointer-events-none" />
+        <div className="absolute inset-0 bg-hero-vignette pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-px"
+          style={{ background: "linear-gradient(to right, transparent, rgba(196,30,58,0.25), transparent)" }} />
 
-        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-10 pb-12">
+        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-8 pb-12">
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1.5 text-[10px] text-text-dim mb-6" aria-label="Breadcrumb">
+            <Link href="/" className="hover:text-text-muted transition-colors">Home</Link>
+            <span>/</span>
+            <Link href="/leaderboard" className="hover:text-text-muted transition-colors">Leaderboard</Link>
+            <span>/</span>
+            <span className="text-text-muted">{profile.username}</span>
+          </nav>
+
           <div className="flex items-center gap-6 animate-fade-up">
-            {/* Avatar — double-bezel */}
-            <div className="rounded-[20px] p-px shrink-0" style={{background:'linear-gradient(135deg, rgba(157,111,255,0.4) 0%, rgba(157,111,255,0.05) 100%)'}}>
-              <div className="relative h-20 w-20 rounded-[19px] overflow-hidden bg-purple/10">
+            {/* Avatar */}
+            <div className="p-px shrink-0" style={{ background: "linear-gradient(135deg, rgba(196,30,58,0.45) 0%, rgba(196,30,58,0.05) 100%)", borderRadius: 4 }}>
+              <div className="relative h-20 w-20 overflow-hidden bg-red/8" style={{ borderRadius: 3 }}>
                 {profile.avatar_url ? (
                   <Image src={profile.avatar_url} alt={profile.username} fill className="object-cover" sizes="80px" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center">
-                    <User className="h-9 w-9 text-purple" />
+                    <User className="h-9 w-9 text-red" />
                   </div>
                 )}
               </div>
@@ -168,7 +181,7 @@ export default async function ProfilePage({
               </p>
               <Link
                 href={`/picks/${profile.username}`}
-                className="inline-flex items-center gap-1.5 text-[10px] text-text-dim hover:text-purple transition-colors mt-1"
+                className="inline-flex items-center gap-1.5 text-[10px] text-text-dim hover:text-text-muted transition-colors mt-1"
               >
                 <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
@@ -199,7 +212,7 @@ export default async function ProfilePage({
           </div>
           {/* Accuracy */}
           <div className="card-tactical rounded-xl p-4 space-y-2 text-center">
-            <p className={`font-stats text-2xl font-bold ${(pickemStats?.accuracy_pct ?? 0) >= 60 ? "text-success" : "text-purple"}`}>
+            <p className={`font-stats text-2xl font-bold ${(pickemStats?.accuracy_pct ?? 0) >= 60 ? "text-success" : "text-gold"}`}>
               {pickemStats ? `${pickemStats.accuracy_pct ?? 0}%` : "—"}
             </p>
             <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">Accuracy</p>
@@ -229,7 +242,7 @@ export default async function ProfilePage({
         {phaseBreakdown.length > 0 && (
           <div className="space-y-3">
             <h2 className="font-display text-sm text-text uppercase tracking-wide flex items-center gap-2">
-              <svg className="h-3.5 w-3.5 text-purple" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <svg className="h-3.5 w-3.5 text-text-muted" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                 <path d="M3 3h18v18H3z" opacity=".1" fill="currentColor" stroke="none"/>
                 <path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
               </svg>
@@ -241,7 +254,7 @@ export default async function ProfilePage({
                 const barColor = accuracy >= 75
                   ? "from-success/80 to-success/40"
                   : accuracy >= 50
-                  ? "from-purple to-purple/50"
+                  ? "from-gold/70 to-gold/30"
                   : "from-text-dim/60 to-text-dim/30"
                 return (
                   <div
@@ -264,7 +277,7 @@ export default async function ProfilePage({
                       </div>
                       <div className="flex justify-between text-[10px] font-stats">
                         <span className="text-text-dim">{accuracy}% accuracy</span>
-                        <span className={`flex items-center gap-0.5 ${accuracy >= 75 ? "text-success" : accuracy >= 50 ? "text-purple" : "text-text-dim"}`}>
+                        <span className={`flex items-center gap-0.5 ${accuracy >= 75 ? "text-success" : accuracy >= 50 ? "text-gold/70" : "text-text-dim"}`}>
                           {accuracy >= 75 && (
                             <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.66 11.2c-.23-.3-.51-.56-.77-.82-.67-.6-1.43-1.03-2.07-1.66C13.33 7.26 13 4.85 13.95 3c-.95.23-1.78.75-2.49 1.32-2.59 2.08-3.61 5.75-2.39 8.9.04.1.08.2.08.33 0 .22-.15.42-.35.5-.23.1-.47.04-.66-.12a.58.58 0 0 1-.14-.17c-1.13-1.43-1.31-3.48-.55-5.12C5.78 10 4.87 12.3 5 14.47c.06.5.12 1 .29 1.5.14.6.41 1.2.71 1.73 1.08 1.73 2.95 2.97 4.96 3.22 2.14.27 4.43-.12 6.07-1.6 1.83-1.66 2.47-4.32 1.53-6.6l-.13-.26c-.21-.46-.77-1.26-.77-1.26m-3.16 6.3c-.28.24-.74.5-1.1.6-1.12.4-2.24-.16-2.9-.82 1.19-.28 1.9-1.16 2.11-2.05.17-.8-.15-1.46-.28-2.23-.12-.74-.1-1.37.17-2.06.19.38.39.76.63 1.06.77 1 1.98 1.44 2.24 2.8.04.14.06.28.06.43.03.82-.33 1.72-.93 2.27z"/></svg>
                           )}
@@ -282,7 +295,7 @@ export default async function ProfilePage({
         {/* Recent predictions */}
         <div className="space-y-4">
           <h2 className="font-display text-sm text-text uppercase tracking-wide flex items-center gap-2">
-            <TargetIcon className="h-4 w-4 text-purple" />
+            <TargetIcon className="h-4 w-4 text-text-muted" />
             Recent Predictions
           </h2>
 
@@ -290,7 +303,7 @@ export default async function ProfilePage({
             <div className="p-6 border border-dashed border-white/8 rounded-xl text-center space-y-3">
               <p className="text-sm text-text-muted">No resolved predictions yet.</p>
               {isOwn && (
-                <Link href="/predictions" className="text-xs text-purple hover:underline">
+                <Link href="/predictions" className="text-xs text-text-muted hover:text-text transition-colors">
                   Make predictions →
                 </Link>
               )}
@@ -299,8 +312,7 @@ export default async function ProfilePage({
 
           {predictions.length > 0 && (
             <div className="card-tactical rounded-xl divide-y divide-white/5 overflow-hidden">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {predictions.map((pred: any) => {
+              {predictions.map((pred) => {
                 const m = pred.matches
                 const correct = pred.is_correct === true
                 return (
@@ -336,14 +348,14 @@ export default async function ProfilePage({
             </div>
           )}
 
-          {pickemStats && pickemStats.resolved_picks > 0 && (
+          {pickemStats && (pickemStats.resolved_picks ?? 0) > 0 && (
             <div className="card-tactical rounded-xl px-4 py-3 flex items-center justify-between text-xs">
               <span className="text-text-muted">
-                {pickemStats.correct_picks}/{pickemStats.resolved_picks} correct
+                {pickemStats.correct_picks ?? 0}/{pickemStats.resolved_picks ?? 0} correct
               </span>
               <Link
                 href={`/picks/${profile.username}`}
-                className="font-stats font-bold text-purple hover:text-purple/80 transition-colors"
+                className="font-stats font-bold text-gold hover:text-gold/80 transition-colors"
               >
                 View all picks →
               </Link>

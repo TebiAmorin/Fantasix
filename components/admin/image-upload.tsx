@@ -173,7 +173,7 @@ export function ImageUpload({
           value={url}
           onChange={(e) => { setUrl(e.target.value); onUpload(e.target.value) }}
           placeholder="Or paste image URL..."
-          className="flex-1 h-8 px-3 rounded-md border border-white/8 bg-white/3 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-purple/50"
+          className="flex-1 h-8 px-3 rounded-md border border-white/8 bg-white/3 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-red/30"
         />
       </div>
     </div>

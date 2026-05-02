@@ -41,6 +41,8 @@
   --color-red-dim:     rgba(196, 30, 58, 0.12);
   --color-gold:        #F0B429;
   --color-gold-dim:    rgba(240, 180, 41, 0.10);
+  --color-purple:      #9D6FFF;
+  --color-purple-dim:  rgba(157, 111, 255, 0.10);
 
   /* Text */
   --color-text:        #F0F2F8;
@@ -148,11 +150,27 @@
   pointer-events: none;
 }
 
+/* Fine grid overlay — subtle pixel grid used in login, setup, fantasy hero */
+.grid-fine {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
 /* SLC event mesh — keep minimal, used in hero only */
 .bg-slc-mesh {
   background:
     linear-gradient(160deg, rgba(196,30,58,0.08) 0%, transparent 35%),
     #0A0B0F;
+}
+
+/* Login page mesh — deep void with a centered radial depth field */
+.bg-login-mesh {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(157,111,255,0.06) 0%, transparent 60%),
+    linear-gradient(160deg, rgba(196,30,58,0.04) 0%, transparent 40%),
+    #07080D;
 }
 
 /* ============================================================
@@ -407,6 +425,18 @@
   to   { background-position: 200% 0; }
 }
 
+@keyframes event-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.08); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+
+.animate-event-pulse { animation: event-pulse 4s ease-in-out infinite; }
+.animate-glow-pulse  { animation: glow-pulse  5s ease-in-out infinite; }
 .animate-fade-up   { animation: fade-up 0.45s cubic-bezier(0.32,0.72,0,1) forwards; }
 .animate-fade-in   { animation: fade-in 0.35s ease forwards; }
 .animate-fade-up-1 { animation: fade-up 0.45s 0.07s cubic-bezier(0.32,0.72,0,1) both; }
@@ -461,3 +491,8 @@
 
 /* Gold accent for rank */
 .glow-gold { border: 1px solid rgba(240,180,41,0.3); }
+
+/* Text glow utilities — used on hero headings */
+.text-glow-gold  { text-shadow: 0 0 40px rgba(245,200,66,0.55), 0 0 80px rgba(245,200,66,0.25); }
+.text-glow-teal  { text-shadow: 0 0 40px rgba(0,212,184,0.55),  0 0 80px rgba(0,212,184,0.25); }
+.text-glow-red   { text-shadow: 0 0 40px rgba(196,30,58,0.55),  0 0 80px rgba(196,30,58,0.25); }

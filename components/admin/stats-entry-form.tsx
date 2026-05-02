@@ -145,7 +145,7 @@ export function StatsEntryForm({ matchId, player, existingStats }: StatsEntryFor
                   min={field.min ?? 0}
                   max={field.max}
                   step={field.step ?? 1}
-                  className="w-full h-8 rounded border border-white/8 bg-surface px-2 text-sm font-stats text-center text-text focus:outline-none focus:border-purple/50 hover:border-white/20"
+                  className="w-full h-8 rounded border border-white/8 bg-surface px-2 text-sm font-stats text-center text-text focus:outline-none focus:border-red/30 hover:border-white/20"
                 />
               </div>
             ))}

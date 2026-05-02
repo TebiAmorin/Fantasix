@@ -15,12 +15,11 @@ export async function generateMetadata({
   const { username } = await params
   const supabase = await createClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: stats } = await (supabase as any)
+  const { data: stats } = await supabase
     .from("pickem_leaderboard")
     .select("total_points, accuracy_pct, correct_picks, resolved_picks")
     .eq("username", username)
-    .single() as { data: { total_points: number; accuracy_pct: number; correct_picks: number; resolved_picks: number } | null }
+    .single()
 
   const description = stats
     ? `${stats.correct_picks}/${stats.resolved_picks} correct · ${stats.accuracy_pct}% accuracy · ${stats.total_points} pts`
@@ -75,7 +74,7 @@ function PickCard({ pick }: { pick: PickRow }) {
       <div className={`absolute inset-x-0 top-0 h-px ${
         resolved
           ? correct ? "bg-success/40" : "bg-danger/30"
-          : "bg-purple/20"
+          : "bg-white/10"
       }`} />
 
       <div className="flex items-center gap-3 px-4 py-3.5">
@@ -144,45 +143,33 @@ export default async function PicksPage({
   const supabase = await createClient()
 
   // Load profile
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = await (supabase as any)
+  const { data: profile } = await supabase
     .from("profiles")
     .select("id, username, avatar_url")
     .eq("username", username)
-    .single() as { data: { id: string; username: string; avatar_url: string | null } | null }
+    .single()
 
   if (!profile) notFound()
 
   // Stats from leaderboard view
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: stats } = await (supabase as any)
+  const { data: stats } = await supabase
     .from("pickem_leaderboard")
     .select("total_points, correct_picks, resolved_picks, accuracy_pct, current_streak")
     .eq("user_id", profile.id)
-    .single() as {
-      data: {
-        total_points: number
-        correct_picks: number
-        resolved_picks: number
-        accuracy_pct: number
-        current_streak: number
-      } | null
-    }
+    .single()
 
   // Rank
   let rank: number | null = null
   if (stats) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count } = await (supabase as any)
+    const { count } = await supabase
       .from("pickem_leaderboard")
       .select("*", { count: "exact", head: true })
-      .gt("total_points", stats.total_points) as { count: number | null }
+      .gt("total_points", stats.total_points)
     rank = (count ?? 0) + 1
   }
 
-  // All picks (resolved + pending, newest first, cap at 30)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: rawPicks } = await (supabase as any)
+  // All picks (resolved + pending, newest first)
+  const { data: rawPicks } = await (supabase
     .from("match_predictions")
     .select(`
       id, is_correct,
@@ -193,8 +180,7 @@ export default async function PicksPage({
         winner:teams!matches_winner_id_fkey(short_name))
     `)
     .eq("user_id", profile.id)
-    .order("created_at", { ascending: false })
-    .limit(30) as { data: PickRow[] | null }
+    .order("created_at", { ascending: false }) as unknown as { data: PickRow[] | null })
 
   const picks = rawPicks ?? []
   const resolvedPicks = picks.filter(p => p.is_correct !== null)
@@ -208,30 +194,21 @@ export default async function PicksPage({
     <div className="min-h-screen">
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden">
-        <div
-          className="absolute inset-0"
-          style={{
-            background: [
-              "radial-gradient(ellipse 70% 90% at 15% 50%, rgba(157,111,255,0.10) 0%, transparent 60%)",
-              "radial-gradient(ellipse 50% 60% at 85% 20%, rgba(245,200,66,0.06) 0%, transparent 55%)",
-              "#07080D",
-            ].join(", "),
-          }}
-        />
-        <div className="absolute inset-0 grid-fine opacity-25" />
-        <div className="absolute top-0 left-1/4 w-80 h-80 rounded-full bg-purple/6 blur-[110px] pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-purple/20 to-transparent" />
+        <div className="absolute inset-0 bg-tactical-stripe pointer-events-none" />
+        <div className="absolute inset-0 bg-hero-vignette pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-px"
+          style={{ background: "linear-gradient(to right, transparent, rgba(196,30,58,0.25), transparent)" }} />
 
         <div className="relative z-10 mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 pt-10 pb-12">
           <div className="flex items-start gap-5 animate-fade-up">
             {/* Avatar */}
-            <div className="rounded-[18px] p-px shrink-0" style={{ background: "linear-gradient(135deg, rgba(157,111,255,0.35) 0%, rgba(157,111,255,0.05) 100%)" }}>
-              <div className="relative h-16 w-16 rounded-[17px] overflow-hidden bg-purple/10">
+            <div className="rounded-sm p-px shrink-0" style={{ background: "linear-gradient(135deg, rgba(196,30,58,0.4) 0%, rgba(196,30,58,0.05) 100%)" }}>
+              <div className="relative h-16 w-16 overflow-hidden bg-red/8" style={{ borderRadius: 2 }}>
                 {profile.avatar_url ? (
                   <Image src={profile.avatar_url} alt={profile.username} fill className="object-cover" sizes="64px" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center">
-                    <User className="h-7 w-7 text-purple" />
+                    <User className="h-7 w-7 text-red" />
                   </div>
                 )}
               </div>
@@ -258,7 +235,7 @@ export default async function PicksPage({
                     <span className="text-[11px] text-text-muted font-stats tabular-nums">
                       {stats.correct_picks}/{stats.resolved_picks} correct
                     </span>
-                    <span className="text-[11px] text-purple font-stats tabular-nums">
+                    <span className="text-[11px] text-gold font-stats tabular-nums">
                       {stats.accuracy_pct ?? 0}%
                     </span>
                     {(stats.current_streak ?? 0) >= 2 && (
@@ -279,7 +256,7 @@ export default async function PicksPage({
             <ShareButton username={profile.username} isOwn={isOwn} />
             <Link
               href="/predictions"
-              className="text-xs text-purple hover:text-purple/80 transition-colors"
+              className="text-xs text-text-muted hover:text-text transition-colors"
             >
               Make your own picks →
             </Link>
@@ -294,7 +271,7 @@ export default async function PicksPage({
           <div className="py-16 text-center space-y-3">
             <p className="text-sm text-text-muted">No picks yet.</p>
             {isOwn && (
-              <Link href="/predictions" className="text-xs text-purple hover:underline">
+              <Link href="/predictions" className="text-xs text-text-muted hover:text-text transition-colors">
                 Make your first prediction →
               </Link>
             )}
@@ -330,7 +307,7 @@ export default async function PicksPage({
         )}
 
         {/* Summary footer */}
-        {stats && stats.resolved_picks > 0 && (
+        {stats && (stats.resolved_picks ?? 0) > 0 && (
           <div
             className="rounded-2xl px-5 py-4 flex items-center justify-between"
             style={{
@@ -345,7 +322,7 @@ export default async function PicksPage({
               <p className="text-[10px] text-text-muted uppercase tracking-[0.15em]">Correct</p>
             </div>
             <div className="text-right">
-              <p className="font-stats text-xl font-bold text-purple tabular-nums">
+              <p className="font-stats text-xl font-bold text-gold tabular-nums">
                 {stats.accuracy_pct ?? 0}%
               </p>
               <p className="text-[10px] text-text-muted uppercase tracking-[0.15em]">Accuracy</p>
@@ -361,13 +338,7 @@ export default async function PicksPage({
 
         {/* Join CTA — only for visitors who are not logged in */}
         {!viewer && (
-          <div
-            className="rounded-2xl px-5 py-5 text-center space-y-3"
-            style={{
-              background: "rgba(157,111,255,0.04)",
-              boxShadow: "inset 0 0 0 1px rgba(157,111,255,0.12)",
-            }}
-          >
+          <div className="card-tactical rounded-sm px-5 py-5 text-center space-y-3">
             <p className="font-display text-sm text-text uppercase tracking-wide">
               Predict the BLAST R6 Major SLC 2026
             </p>

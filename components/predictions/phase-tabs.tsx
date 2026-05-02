@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { PredictionCard } from "./prediction-card"
+import { EVENT_START } from "@/lib/constants"
 
 interface Team {
   id: string
@@ -85,7 +87,7 @@ function RoundLabel({ name }: { name: string }) {
 }
 
 function EventCountdown() {
-  const TARGET = new Date("2026-05-08T18:00:00Z").getTime()
+  const TARGET = EVENT_START.getTime()
   const [diff, setDiff] = useState(() => TARGET - Date.now())
 
   useEffect(() => {
@@ -228,17 +230,39 @@ function MatchGrid({
 export function PhaseTabs({
   phases, matches, picksMap, isLoggedIn, communityPicksMap,
 }: PhaseTabsProps) {
+  const searchParams = useSearchParams()
+  const router       = useRouter()
+  const pathname     = usePathname()
+
   const sortedPhases = [...phases].sort((a, b) => a.order_index - b.order_index)
-  const defaultId = sortedPhases.find(p => p.is_active)?.id ?? sortedPhases[0]?.id ?? "__all"
-  const [activeTab, setActiveTab] = useState<string>(defaultId)
+  const fallbackId   = sortedPhases.find(p => p.is_active)?.id ?? sortedPhases[0]?.id ?? "__all"
+  const urlPhase     = searchParams.get("phase") ?? null
+  // Validate URL param against known phase IDs; fall back to default
+  const validUrlPhase = urlPhase && (urlPhase === "__all" || sortedPhases.some(p => p.id === urlPhase))
+    ? urlPhase : null
+  const [activeTab, setActiveTab] = useState<string>(validUrlPhase ?? fallbackId)
+
+  const handleTabChange = (id: string) => {
+    setActiveTab(id)
+    const params = new URLSearchParams(searchParams.toString())
+    if (id === "__all") params.delete("phase")
+    else params.set("phase", id)
+    const qs = params.toString()
+    router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false })
+  }
 
   const filtered = activeTab === "__all"
     ? matches
     : matches.filter(m => m.phase_id === activeTab)
 
+  const byDate = (a: MatchForDisplay, b: MatchForDisplay) =>
+    (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? "")
+
   const live      = filtered.filter(m => m.status === "live")
-  const upcoming  = filtered.filter(m => m.status === "scheduled")
-  const completed = filtered.filter(m => m.status === "completed").reverse()
+  const upcoming  = filtered.filter(m => m.status === "scheduled").sort(byDate)
+  const completed = filtered.filter(m => m.status === "completed")
+    .sort((a, b) => byDate(b, a)) // most recent first
+  const cancelled = filtered.filter(m => m.status === "cancelled")
 
   const pickedUpcoming     = upcoming.filter(m => picksMap[m.id]).length
   const allUpcomingPicked  = upcoming.length > 0 && pickedUpcoming === upcoming.length
@@ -284,7 +308,7 @@ export function PhaseTabs({
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-display font-bold uppercase tracking-wider whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] shrink-0 ${
                   isActive
                     ? "text-void shadow-[0_2px_12px_rgba(245,200,66,0.3),0_0_0_1px_rgba(245,200,66,0.4)]"
@@ -414,6 +438,28 @@ export function PhaseTabs({
                 communityPicksMap={communityPicksMap}
                 showRoundLabels={true}
               />
+            </section>
+          )}
+
+          {/* Cancelled */}
+          {cancelled.length > 0 && (
+            <section className="space-y-3">
+              <SectionDivider label="Cancelled" count={cancelled.length} />
+              <div className="space-y-2">
+                {cancelled.map(m => (
+                  <div
+                    key={m.id}
+                    className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-white/5 bg-white/2 opacity-50"
+                  >
+                    <span className="font-display text-xs text-text-muted uppercase tracking-wide">
+                      {m.team_a.short_name ?? m.team_a.name} vs {m.team_b.short_name ?? m.team_b.name}
+                    </span>
+                    <span className="text-[9px] font-display text-text-dim uppercase tracking-[0.2em] border border-white/8 px-1.5 py-0.5 rounded">
+                      Cancelled
+                    </span>
+                  </div>
+                ))}
+              </div>
             </section>
           )}
         </div>

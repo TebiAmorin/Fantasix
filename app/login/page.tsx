@@ -100,11 +100,11 @@ export default async function LoginPage({
       <div className="absolute inset-0 grid-fine opacity-50" />
 
       {/* Ambient orbs */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-purple/8 blur-[140px] animate-glow-pulse pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-red/6 blur-[140px] animate-glow-pulse pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-gold/5 blur-[100px] pointer-events-none" />
 
       {/* Scan lines */}
-      <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-purple/25 to-transparent top-[38%] pointer-events-none" />
+      <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-red/15 to-transparent top-[38%] pointer-events-none" />
       <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/10 to-transparent top-[62%] pointer-events-none" />
 
       {/* Corner grid accents */}
@@ -124,16 +124,16 @@ export default async function LoginPage({
             <div className="text-center space-y-4 animate-fade-up">
               <div className="flex justify-center">
                 <div className="relative w-14 h-14">
-                  <div className="absolute inset-0 rounded-2xl bg-purple/20 blur-xl animate-glow-pulse" />
-                  <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-purple/30 bg-purple/10">
-                    <svg className="h-7 w-7 text-purple-bright" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <div className="absolute inset-0 rounded-2xl bg-red/12 blur-xl animate-glow-pulse" />
+                  <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-red/25 bg-red/8">
+                    <svg className="h-7 w-7 text-red" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     </svg>
                   </div>
                 </div>
               </div>
               <div className="animate-fade-up-1">
-                <h1 className="font-display text-3xl tracking-[0.2em] text-glow-purple">FANTASIX</h1>
+                <h1 className="font-display text-3xl tracking-[0.2em] text-glow-gold text-gold">FANTASIX</h1>
                 <p className="text-[11px] text-text-muted mt-1 tracking-[0.15em] uppercase">
                   R6 Siege Competitive Platform
                 </p>
@@ -142,9 +142,9 @@ export default async function LoginPage({
 
             {/* Divider */}
             <div className="flex items-center gap-3 animate-fade-up-2">
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent to-purple/20" />
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent to-white/8" />
               <span className="font-display text-[9px] text-text-muted tracking-[0.25em]">SIGN IN WITH</span>
-              <div className="flex-1 h-px bg-gradient-to-l from-transparent to-purple/20" />
+              <div className="flex-1 h-px bg-gradient-to-l from-transparent to-white/8" />
             </div>
 
             {hasError && (
@@ -194,7 +194,7 @@ export default async function LoginPage({
               <p className="text-[10px] text-text-muted tracking-wide">
                 No passwords stored · Accept our terms on sign-in
               </p>
-              <Link href="/" className="inline-flex items-center gap-1.5 text-[10px] text-text-muted hover:text-purple transition-colors duration-300 uppercase tracking-[0.15em]">
+              <Link href="/" className="inline-flex items-center gap-1.5 text-[10px] text-text-muted hover:text-text-muted transition-colors duration-300 uppercase tracking-[0.15em]">
                 <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
                 Back to site
               </Link>
@@ -204,7 +204,7 @@ export default async function LoginPage({
         </div>
 
         {/* Decorative rings */}
-        <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full border border-purple/8 pointer-events-none" />
+        <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full border border-white/6 pointer-events-none" />
         <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full border border-gold/6 pointer-events-none" />
       </div>
     </div>

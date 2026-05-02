@@ -79,7 +79,7 @@ export function PlayerForm({ player, teams }: PlayerFormProps) {
                 id="team_id"
                 name="team_id"
                 defaultValue={player?.team_id ?? ""}
-                className="w-full h-9 rounded-md border border-white/8 bg-surface px-3 text-sm text-text focus:outline-none focus:border-purple/50"
+                className="w-full h-9 rounded-md border border-white/8 bg-surface px-3 text-sm text-text focus:outline-none focus:border-red/30"
               >
                 <option value="">— No team —</option>
                 {teams.map((t) => (
@@ -152,7 +152,7 @@ export function PlayerForm({ player, teams }: PlayerFormProps) {
                 max={99}
                 value={cost}
                 onChange={(e) => setCost(parseInt(e.target.value) || 10)}
-                className="w-16 h-8 rounded-md border border-white/8 bg-surface px-2 text-xs text-center text-text focus:outline-none focus:border-purple/50"
+                className="w-16 h-8 rounded-md border border-white/8 bg-surface px-2 text-xs text-center text-text focus:outline-none focus:border-red/30"
                 placeholder="Custom"
               />
             </div>

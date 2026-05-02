@@ -17,12 +17,11 @@ export default async function SetupPage({
   if (!user) redirect(`/login?redirect=${encodeURIComponent(next)}`)
 
   // If already set up, skip
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = await (supabase as any)
+  const { data: profile } = await supabase
     .from("profiles")
     .select("username, setup_complete")
     .eq("id", user!.id)
-    .single() as { data: { username: string; setup_complete: boolean } | null }
+    .single()
 
   if (profile?.setup_complete) redirect(next.startsWith("/") ? next : "/predictions")
 
@@ -81,7 +80,7 @@ export default async function SetupPage({
                   pattern="[a-zA-Z0-9_]+"
                   required
                   autoFocus
-                  className="w-full h-11 px-4 rounded-xl text-sm text-text bg-white/4 border border-white/10 focus:border-purple/50 focus:outline-none placeholder:text-text-dim transition-colors duration-300"
+                  className="w-full h-11 px-4 rounded-xl text-sm text-text bg-white/4 border border-white/10 focus:border-red/30 focus:outline-none placeholder:text-text-dim transition-colors duration-300"
                 />
                 <p className="text-[10px] text-text-dim">3–20 characters · Letters, numbers, underscores</p>
               </div>

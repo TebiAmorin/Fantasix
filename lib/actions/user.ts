@@ -18,18 +18,16 @@ export async function submitPrediction(formData: FormData) {
 
   if (!matchId || !winnerId) return { error: "Missing fields" }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: match } = await (supabase as any)
+  const { data: match } = await supabase
     .from("matches")
     .select("status")
     .eq("id", matchId)
-    .single() as { data: { status: string } | null }
+    .single()
 
   if (!match) return { error: "Match not found" }
   if (match.status !== "scheduled") return { error: "Match already locked" }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("match_predictions")
     .upsert(
       {
@@ -65,20 +63,18 @@ export async function setupProfile(formData: FormData) {
   }
 
   // Check uniqueness (case-insensitive)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: existing } = await (supabase as any)
+  const { data: existing } = await supabase
     .from("profiles")
     .select("id")
     .ilike("username", username)
     .neq("id", user.id)
-    .maybeSingle() as { data: { id: string } | null }
+    .maybeSingle()
 
   if (existing) {
     redirect(`/setup?redirect=${encodeURIComponent(safeNext)}&error=taken`)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("profiles")
     .update({ username, setup_complete: true, updated_at: new Date().toISOString() })
     .eq("id", user.id)
@@ -104,18 +100,16 @@ export async function updateProfile(formData: FormData) {
   }
 
   // Check uniqueness
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: existing } = await (supabase as any)
+  const { data: existing } = await supabase
     .from("profiles")
     .select("id")
     .ilike("username", newUsername)
     .neq("id", user.id)
-    .maybeSingle() as { data: { id: string } | null }
+    .maybeSingle()
 
   if (existing) return { error: "That username is already taken." }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("profiles")
     .update({
       username:   newUsername,
@@ -149,8 +143,7 @@ export async function uploadAvatar(formData: FormData): Promise<{ url?: string; 
 
   const buffer = await file.arrayBuffer()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: uploadError } = await (adminClient as any)
+  const { error: uploadError } = await adminClient
     .storage
     .from("avatars")
     .upload(path, buffer, {
@@ -160,8 +153,7 @@ export async function uploadAvatar(formData: FormData): Promise<{ url?: string; 
 
   if (uploadError) return { error: uploadError.message }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: urlData } = (adminClient as any)
+  const { data: urlData } = adminClient
     .storage
     .from("avatars")
     .getPublicUrl(path)
@@ -169,8 +161,7 @@ export async function uploadAvatar(formData: FormData): Promise<{ url?: string; 
   const publicUrl = `${urlData.publicUrl}?v=${Date.now()}`
 
   // Update profile
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
+  await supabase
     .from("profiles")
     .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
     .eq("id", user.id)

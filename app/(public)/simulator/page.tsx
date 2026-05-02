@@ -1,4 +1,6 @@
 import { TournamentSimulator } from "@/components/simulator/tournament-simulator"
+import { createClient } from "@/lib/supabase/server"
+import Link from "next/link"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -15,7 +17,10 @@ export const metadata: Metadata = {
   },
 }
 
-export default function SimulatorPage() {
+export default async function SimulatorPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   return (
     <div>
       {/* ── Hero ── */}
@@ -86,6 +91,30 @@ export default function SimulatorPage() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
         <TournamentSimulator />
       </div>
+
+      {/* ── Auth CTA — only for logged-out visitors ── */}
+      {!user && (
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 pb-16">
+          <div className="card-slc rounded-sm px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <p className="font-display text-sm text-text uppercase tracking-wide">
+                Turn your simulation into real picks
+              </p>
+              <p className="text-xs text-text-muted mt-0.5">
+                Sign in and predict match winners on the Pick&apos;Em page — earn points for every correct call.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <Link href="/predictions" className="btn-ghost text-xs">
+                View matches
+              </Link>
+              <Link href="/login?redirect=/predictions" className="btn-primary text-xs">
+                Sign in to pick
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

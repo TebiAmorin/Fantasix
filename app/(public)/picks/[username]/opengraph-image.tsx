@@ -14,36 +14,25 @@ export default async function Image({
   const { username } = await params
   const supabase = await createClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: stats } = await (supabase as any)
+  const { data: stats } = await supabase
     .from("pickem_leaderboard")
     .select("total_points, correct_picks, resolved_picks, accuracy_pct, current_streak")
     .eq("username", username)
-    .single() as {
-      data: {
-        total_points: number
-        correct_picks: number
-        resolved_picks: number
-        accuracy_pct: number
-        current_streak: number
-      } | null
-    }
+    .single()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profile } = await (supabase as any)
+  const { data: profile } = await supabase
     .from("profiles")
     .select("avatar_url")
     .eq("username", username)
-    .single() as { data: { avatar_url: string | null } | null }
+    .single()
 
   // Rank
   let rank: number | null = null
   if (stats) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count } = await (supabase as any)
+    const { count } = await supabase
       .from("pickem_leaderboard")
       .select("*", { count: "exact", head: true })
-      .gt("total_points", stats.total_points) as { count: number | null }
+      .gt("total_points", stats.total_points)
     rank = (count ?? 0) + 1
   }
 
@@ -198,7 +187,7 @@ export default async function Image({
             {[
               { label: "Points",   value: String(points),    color: "#F5C842" },
               { label: "Correct",  value: `${correct}/${total}`, color: "#F8FAFC" },
-              { label: "Accuracy", value: `${accuracy}%`,   color: "#9D6FFF" },
+              { label: "Accuracy", value: `${accuracy}%`,   color: "#F5C842" },
               ...(streak >= 2 ? [{ label: "Streak", value: `${streak}🔥`, color: "#F5C842" }] : []),
             ].map((stat) => (
               <div key={stat.label} style={{

@@ -11,8 +11,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid subscription" }, { status: 400 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("push_subscriptions")
     .upsert(
       { user_id: user.id, endpoint, p256dh, auth },
@@ -31,8 +30,7 @@ export async function DELETE(req: Request) {
   const { endpoint } = await req.json()
   if (!endpoint) return NextResponse.json({ error: "Missing endpoint" }, { status: 400 })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
+  await supabase
     .from("push_subscriptions")
     .delete()
     .eq("endpoint", endpoint)

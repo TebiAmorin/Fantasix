@@ -1,12 +1,3 @@
-import { type NextRequest } from "next/server"
-import { updateSession } from "@/lib/supabase/middleware"
-
-export async function middleware(request: NextRequest) {
-  return await updateSession(request)
-}
-
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
-}
+// Deprecated — Next.js 16 renamed middleware to proxy.
+// The active file is proxy.ts at the project root.
+// This file is kept empty to avoid accidental re-activation.

@@ -130,8 +130,7 @@ export function Navbar({ user }: { user: Profile | null }) {
                     <DropdownMenuItem className="p-0">
                       <Link href="/fantasy" className="text-xs w-full px-3 py-2 block text-text-muted">Fantasy <span className="text-text-dim">(soon)</span></Link>
                     </DropdownMenuItem>
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {(user as any).role === "admin" && (
+                    {user.role === "admin" && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="p-0">

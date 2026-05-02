@@ -1,20 +1,29 @@
 "use client"
 
 import { useEffect, useState } from "react"
-
-const EVENT_DATE = new Date("2026-05-08T18:00:00Z") // Playins start
+import { EVENT_START, EVENT_END } from "@/lib/constants"
 
 function pad(n: number) { return String(n).padStart(2, "0") }
 
 export function CountdownHero() {
-  const [diff, setDiff] = useState(() => EVENT_DATE.getTime() - Date.now())
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
-    const id = setInterval(() => setDiff(EVENT_DATE.getTime() - Date.now()), 1000)
+    const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
 
-  if (diff <= 0) {
+  // Post-event
+  if (now > EVENT_END.getTime()) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="font-display text-sm text-text-muted uppercase tracking-widest">Event ended</span>
+      </div>
+    )
+  }
+
+  // During event
+  if (now >= EVENT_START.getTime()) {
     return (
       <div className="flex items-center gap-2">
         <span className="relative flex h-2 w-2">
@@ -26,6 +35,8 @@ export function CountdownHero() {
     )
   }
 
+  // Pre-event countdown
+  const diff  = EVENT_START.getTime() - now
   const days  = Math.floor(diff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const mins  = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))

@@ -98,7 +98,7 @@ export function ScoringConfigForm({ rows }: ScoringConfigFormProps) {
                       type="number"
                       defaultValue={Number(row.value)}
                       step="0.01"
-                      className="w-24 h-9 rounded-md border border-white/8 bg-surface px-3 text-sm font-stats text-center text-text focus:outline-none focus:border-purple/50 hover:border-white/20"
+                      className="w-24 h-9 rounded-md border border-white/8 bg-surface px-3 text-sm font-stats text-center text-text focus:outline-none focus:border-red/30 hover:border-white/20"
                     />
                     <span className="text-xs text-text-muted w-4">pts</span>
                   </div>
@@ -148,7 +148,7 @@ export function ScoringConfigForm({ rows }: ScoringConfigFormProps) {
                       type="number"
                       defaultValue={Number(row.value)}
                       step="0.01"
-                      className="w-24 h-9 rounded-md border border-white/8 bg-surface px-3 text-sm font-stats text-center text-text focus:outline-none focus:border-purple/50 hover:border-white/20"
+                      className="w-24 h-9 rounded-md border border-white/8 bg-surface px-3 text-sm font-stats text-center text-text focus:outline-none focus:border-red/30 hover:border-white/20"
                     />
                     <span className="text-xs text-text-muted w-4">pts</span>
                   </div>

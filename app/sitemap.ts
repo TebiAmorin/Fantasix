@@ -6,12 +6,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = await createClient()
 
   // Fetch public usernames for profile pages
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profiles } = await (supabase as any)
+  const { data: profiles } = await supabase
     .from("profiles")
     .select("username, updated_at")
     .eq("setup_complete", true)
-    .limit(500) as { data: Array<{ username: string; updated_at: string }> | null }
+    .limit(500)
 
   const profileUrls: MetadataRoute.Sitemap = (profiles ?? []).map((p) => ({
     url: `${base}/profile/${p.username}`,

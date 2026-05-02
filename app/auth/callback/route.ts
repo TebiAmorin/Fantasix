@@ -34,12 +34,11 @@ export async function GET(request: NextRequest) {
       // Check if user has completed profile setup
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: profile } = await (supabase as any)
+        const { data: profile } = await supabase
           .from("profiles")
           .select("setup_complete")
           .eq("id", user.id)
-          .single() as { data: { setup_complete: boolean } | null }
+          .single()
 
         if (profile && !profile.setup_complete) {
           return NextResponse.redirect(

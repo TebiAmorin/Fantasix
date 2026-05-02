@@ -16,6 +16,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/server"
+import type { MatchStatus, MatchFormat } from "@/lib/types/database.types"
 
 const PANDASCORE_BASE = "https://api.pandascore.co"
 
@@ -57,7 +58,7 @@ interface PSMatch {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function psStatusToLocal(status: PSMatch["status"]): string {
+function psStatusToLocal(status: PSMatch["status"]): MatchStatus {
   switch (status) {
     case "not_started": return "scheduled"
     case "running":     return "live"
@@ -67,10 +68,10 @@ function psStatusToLocal(status: PSMatch["status"]): string {
   }
 }
 
-function psFormatLabel(matchType: string, games: number): string {
+function psFormatLabel(matchType: string, games: number): MatchFormat {
   // DB enum: bo1 | bo3 | bo5 (lowercase)
   const n = games === 1 ? 1 : games <= 3 ? 3 : 5
-  return `bo${n}`
+  return `bo${n}` as MatchFormat
 }
 
 async function psFetch(path: string, token: string) {
@@ -215,8 +216,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Persist all tournament IDs for next run
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await supabase
           .from("tournaments")
           .update({ pandascore_id: tids })
           .eq("id", tournament.id)
@@ -225,8 +225,7 @@ export async function POST(req: NextRequest) {
 
     if (psMatches.length === 0) {
       // Log sync with warning
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("sync_logs").insert({
+      await supabase.from("sync_logs").insert({
         tournament_id: tournament.id,
         triggered_by: "manual",
         status: "success",
@@ -244,16 +243,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Load existing team roster from DB (to map PS team id/name → our UUID)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: dbTeams } = await (supabase as any)
+    const { data: dbTeams } = await supabase
       .from("teams")
       .select("id, name, short_name, pandascore_id")
       .order("name")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const teamByPsId: Record<string, string> = {}
     const teamByNameLower: Record<string, string> = {}
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const t of (dbTeams ?? []) as any[]) {
+    for (const t of (dbTeams ?? [])) {
       if (t.pandascore_id) teamByPsId[String(t.pandascore_id)] = t.id
       teamByNameLower[t.name.toLowerCase()] = t.id
       if (t.short_name) teamByNameLower[t.short_name.toLowerCase()] = t.id
@@ -267,7 +263,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Also update pandascore_id + logo_url on teams we matched by name
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const teamPsIdUpdates: Array<{ id: string; pandascore_id: string; logo_url: string | null }> = []
 
     // 4. Upsert each match
@@ -327,17 +322,15 @@ export async function POST(req: NextRequest) {
       const format = psFormatLabel(m.match_type, m.number_of_games)
       const status = psStatusToLocal(m.status)
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existing } = await (supabase as any)
+      const { data: existing } = await supabase
         .from("matches")
         .select("id")
         .eq("pandascore_id", String(m.id))
-        .maybeSingle() as { data: { id: string } | null }
+        .maybeSingle()
 
       if (existing) {
         // Update existing match
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: updateErr } = await (supabase as any)
+        const { error: updateErr } = await supabase
           .from("matches")
           .update({
             status,
@@ -353,8 +346,7 @@ export async function POST(req: NextRequest) {
         matchesUpdated++
       } else {
         // Insert new match
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: insertErr } = await (supabase as any)
+        const { error: insertErr } = await supabase
           .from("matches")
           .insert({
             tournament_id: tournament.id,
@@ -376,12 +368,9 @@ export async function POST(req: NextRequest) {
 
     // 5. Update team pandascore_id + logo_url in batch
     for (const update of teamPsIdUpdates) {
-      const patch: Record<string, string | null> = { pandascore_id: update.pandascore_id }
-      if (update.logo_url) patch.logo_url = update.logo_url   // only overwrite if PS has a logo
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      await supabase
         .from("teams")
-        .update(patch)
+        .update({ pandascore_id: update.pandascore_id, ...(update.logo_url ? { logo_url: update.logo_url } : {}) })
         .eq("id", update.id)
     }
 
@@ -391,8 +380,7 @@ export async function POST(req: NextRequest) {
 
   // 6. Log sync result
   const duration = Date.now() - startedAt
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("sync_logs").insert({
+  await supabase.from("sync_logs").insert({
     tournament_id: tournamentDbId,
     triggered_by: "manual",
     status: errorMessage ? "error" : "success",
@@ -430,8 +418,7 @@ export async function GET(req: NextRequest) {
   // Health check mode — just return last sync logs
   if (searchParams.get("health") === "1") {
     const supabase = createAdminClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: lastSync } = await (supabase as any)
+    const { data: lastSync } = await supabase
       .from("sync_logs")
       .select("*")
       .order("synced_at", { ascending: false })

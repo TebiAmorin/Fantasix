@@ -25,11 +25,11 @@ function RankBadge({ rank }: { rank: number }) {
 
 function Avatar({ username, avatarUrl }: { username: string; avatarUrl: string | null }) {
   return (
-    <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 bg-purple/15 border border-purple/20 flex items-center justify-center">
+    <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 bg-red/10 border border-red/20 flex items-center justify-center">
       {avatarUrl ? (
         <Image src={avatarUrl} alt={username} width={28} height={28} className="object-cover" />
       ) : (
-        <span className="font-display text-purple text-[9px] font-bold">{username.slice(0, 2).toUpperCase()}</span>
+        <span className="font-display text-red text-[9px] font-bold">{username.slice(0, 2).toUpperCase()}</span>
       )}
     </div>
   )
@@ -38,14 +38,14 @@ function Avatar({ username, avatarUrl }: { username: string; avatarUrl: string |
 function AccuracyBar({ pct }: { pct: number }) {
   const color = pct >= 75
     ? "from-success/80 to-success/40"
-    : pct >= 50 ? "from-purple to-purple/50"
+    : pct >= 50 ? "from-gold/70 to-gold/30"
     : "from-text-dim/60 to-text-dim/30"
   return (
     <div className="flex items-center gap-2 min-w-[80px]">
       <div className="flex-1 h-1 rounded-full bg-white/5 overflow-hidden">
         <div className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-700`} style={{ width: `${Math.min(pct, 100)}%` }} />
       </div>
-      <span className={`font-stats text-[10px] tabular-nums w-7 text-right ${pct >= 75 ? "text-success/80" : pct >= 50 ? "text-text-muted" : "text-text-dim"}`}>{pct}%</span>
+      <span className={`font-stats text-[10px] tabular-nums w-7 text-right ${pct >= 75 ? "text-success/80" : pct >= 50 ? "text-gold/70" : "text-text-dim"}`}>{pct}%</span>
     </div>
   )
 }
@@ -86,7 +86,7 @@ export function LeaderboardTable({
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search player..."
-          className="w-full h-9 pl-8 pr-3 rounded-xl text-xs text-text bg-transparent border border-white/8 focus:border-purple/40 focus:outline-none placeholder:text-text-dim transition-colors duration-300"
+          className="w-full h-9 pl-8 pr-3 rounded-xl text-xs text-text bg-transparent border border-white/8 focus:border-red/30 focus:outline-none placeholder:text-text-dim transition-colors duration-300"
         />
         {query && (
           <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text transition-colors">

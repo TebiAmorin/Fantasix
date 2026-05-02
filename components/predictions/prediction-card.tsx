@@ -91,10 +91,10 @@ function TeamLogo({ team, size = 46 }: { team: Team; size?: number }) {
   }
   return (
     <div
-      className="rounded-xl bg-purple/15 border border-purple/20 flex items-center justify-center shrink-0"
+      className="rounded-xl bg-red/10 border border-red/20 flex items-center justify-center shrink-0"
       style={{ width: size, height: size }}
     >
-      <span className="font-display text-purple font-bold" style={{ fontSize: size * 0.28 }}>
+      <span className="font-display text-red font-bold" style={{ fontSize: size * 0.28 }}>
         {(team.short_name ?? team.name).slice(0, 2).toUpperCase()}
       </span>
     </div>
@@ -116,17 +116,18 @@ export function PredictionCard({
   const handlePick = (teamId: string) => {
     if (locked || !isLoggedIn || isPending) return
     if (teamId === pick) return
-    const wasAlreadyPicked = pick !== null
+    const previousPick = pick
+    setPick(teamId) // optimistic — show immediately
     start(async () => {
       const fd = new FormData()
       fd.set("match_id",  matchId)
       fd.set("winner_id", teamId)
       const result = await submitPrediction(fd)
       if (result.error) {
+        setPick(previousPick) // revert on failure
         toast.error(result.error)
       } else {
-        setPick(teamId)
-        toast.success(wasAlreadyPicked ? "Pick updated!" : "Pick saved!")
+        toast.success(previousPick !== null ? "Pick updated!" : "Pick saved!")
       }
     })
   }
@@ -172,7 +173,7 @@ export function PredictionCard({
 
   // Community
   const totalCommunity = communityA + communityB
-  const showCommunity  = totalCommunity >= 5 && (locked || pick !== null)
+  const showCommunity  = totalCommunity >= 3
   const pctA = totalCommunity > 0 ? Math.round((communityA / totalCommunity) * 100) : 50
   const pctB = 100 - pctA
   const shortA = teamA.short_name ?? teamA.name.slice(0, 3).toUpperCase()
@@ -249,7 +250,7 @@ export function PredictionCard({
           >
             {/* Hover overlay — only when not picked and not locked */}
             {canClick && !pickA && (
-              <div className="absolute inset-0 bg-gradient-to-b from-purple/10 to-purple/3 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/6 to-white/2 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none" />
             )}
             {/* Picked shimmer overlay */}
             {pickA && !locked && (
@@ -327,7 +328,7 @@ export function PredictionCard({
             style={{ background: sideBg(pickB, winB, loseB) }}
           >
             {canClick && !pickB && (
-              <div className="absolute inset-0 bg-gradient-to-b from-purple/10 to-purple/3 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/6 to-white/2 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none" />
             )}
             {pickB && !locked && (
               <div className="absolute inset-0 pick-shimmer pointer-events-none" />

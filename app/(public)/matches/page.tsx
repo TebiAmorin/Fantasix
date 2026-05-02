@@ -32,7 +32,7 @@ interface Match {
   external_stats_url: string | null
   team_a: { id: string; short_name: string; name: string; logo_url: string | null } | null
   team_b: { id: string; short_name: string; name: string; logo_url: string | null } | null
-  winner:  { short_name: string } | null
+  winner:  { id: string; short_name: string } | null
 }
 
 interface Phase {
@@ -71,7 +71,7 @@ function TeamLogo({ team, size = 32 }: { team: { short_name: string; logo_url: s
       {team.logo_url ? (
         <Image src={team.logo_url} alt={team.short_name} width={size} height={size} className="object-contain" />
       ) : (
-        <div className="rounded bg-purple/15 border border-purple/20 flex items-center justify-center text-purple font-display font-bold"
+        <div className="rounded bg-red/10 border border-red/20 flex items-center justify-center text-red font-display font-bold"
           style={{ width: size, height: size, fontSize: size * 0.28 }}>
           {team.short_name.slice(0, 2).toUpperCase()}
         </div>
@@ -83,8 +83,8 @@ function TeamLogo({ team, size = 32 }: { team: { short_name: string; logo_url: s
 function MatchRow({ match }: { match: Match }) {
   const completed = match.status === "completed"
   const live      = match.status === "live"
-  const winA      = completed && match.winner?.short_name === match.team_a?.short_name
-  const winB      = completed && match.winner?.short_name === match.team_b?.short_name
+  const winA      = completed && match.winner !== null && match.winner.id === match.team_a?.id
+  const winB      = completed && match.winner !== null && match.winner.id === match.team_b?.id
 
   return (
     <div className={`
@@ -182,26 +182,24 @@ export default async function MatchesPage() {
   const supabase = await createClient()
 
   // Active tournament
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: tournament } = await (supabase as any)
+  const { data: tournament } = await supabase
     .from("tournaments")
     .select("id, name, start_date, end_date")
     .eq("is_active", true)
-    .single() as { data: { id: string; name: string; start_date: string | null; end_date: string | null } | null }
+    .single()
 
   if (!tournament) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-24 text-center space-y-3">
         <p className="font-display text-2xl text-text-muted/20 tracking-widest">NO TOURNAMENT</p>
         <p className="text-sm text-text-muted">No active tournament right now.</p>
-        <Link href="/predictions" className="text-xs text-purple hover:underline">Back to predictions →</Link>
+        <Link href="/predictions" className="text-xs text-text-muted hover:text-text transition-colors">Back to predictions →</Link>
       </div>
     )
   }
 
   // All phases with matches
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: rawPhases } = await (supabase as any)
+  const { data: rawPhases } = await supabase
     .from("phases")
     .select(`
       id, name, order_index,
@@ -210,11 +208,11 @@ export default async function MatchesPage() {
         team_a_maps_won, team_b_maps_won, external_stats_url,
         team_a:teams!matches_team_a_id_fkey(id, short_name, name, logo_url),
         team_b:teams!matches_team_b_id_fkey(id, short_name, name, logo_url),
-        winner:teams!matches_winner_id_fkey(short_name)
+        winner:teams!matches_winner_id_fkey(id, short_name)
       )
     `)
     .eq("tournament_id", tournament.id)
-    .order("order_index") as { data: Phase[] | null }
+    .order("order_index") as unknown as { data: Phase[] | null }
 
   const phases: Phase[] = (rawPhases ?? []).map(p => ({
     ...p,
@@ -315,7 +313,7 @@ export default async function MatchesPage() {
         {phases.length === 0 && (
           <div className="py-16 border border-dashed border-white/8 rounded-2xl text-center space-y-3">
             <p className="text-sm text-text-muted">No matches scheduled yet.</p>
-            <Link href="/predictions" className="text-xs text-purple hover:underline">Go to predictions →</Link>
+            <Link href="/predictions" className="text-xs text-text-muted hover:text-text transition-colors">Go to predictions →</Link>
           </div>
         )}
 

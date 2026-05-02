@@ -1,9 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { AdminNav } from "@/components/admin/admin-nav"
 import { Shield } from "lucide-react"
-
+import { AdminShell } from "./_components/admin-shell"
 
 export default async function AdminLayout({
   children,
@@ -24,30 +23,8 @@ export default async function AdminLayout({
   if (profile?.role !== "admin") redirect("/")
 
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-white/8 bg-surface flex flex-col">
-        <div className="px-4 py-5 border-b border-white/8">
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-purple" />
-            <span className="font-display text-sm text-text tracking-wider">ADMIN</span>
-          </div>
-          <p className="text-xs text-text-muted mt-0.5 truncate">{profile?.username}</p>
-        </div>
-
-        <AdminNav />
-
-        <div className="px-4 py-3 border-t border-white/8">
-          <Link href="/" className="text-xs text-text-muted hover:text-text transition-colors">
-            ← Back to site
-          </Link>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main className="flex-1 p-6 overflow-auto">
-        {children}
-      </main>
-    </div>
+    <AdminShell username={profile?.username ?? ""}>
+      {children}
+    </AdminShell>
   )
 }
