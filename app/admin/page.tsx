@@ -21,12 +21,17 @@ export default async function AdminDashboard() {
     supabase.from("players").select("*", { count: "exact", head: true }),
     supabase.from("matches").select("*", { count: "exact", head: true }),
     supabase.from("tournaments").select("name").eq("is_active", true).single(),
-    supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
       .from("matches")
-      .select("id, scheduled_at")
+      .select(`
+        id, scheduled_at,
+        team_a:teams!matches_team_a_id_fkey(short_name),
+        team_b:teams!matches_team_b_id_fkey(short_name)
+      `)
       .eq("status", "scheduled")
       .order("scheduled_at")
-      .limit(5),
+      .limit(5) as Promise<{ data: Array<{ id: string; scheduled_at: string | null; team_a: { short_name: string } | null; team_b: { short_name: string } | null }> | null }>,
   ])
 
   const activeTournamentName = (activeTournament as { name?: string } | null)?.name
@@ -85,7 +90,7 @@ export default async function AdminDashboard() {
 
           {pendingMatches && pendingMatches.length > 0 ? (
             <div className="space-y-2">
-              {(pendingMatches as Array<{ id: string; scheduled_at: string | null }>).map((match) => (
+              {(pendingMatches as Array<{ id: string; scheduled_at: string | null; team_a: { short_name: string } | null; team_b: { short_name: string } | null }>).map((match) => (
                 <Link
                   key={match.id}
                   href={`/admin/matches/${match.id}`}
@@ -93,8 +98,10 @@ export default async function AdminDashboard() {
                 >
                   <Clock className="h-3.5 w-3.5 text-text-muted shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-text truncate font-mono text-xs">
-                      #{match.id.slice(0, 8)}
+                    <p className="text-sm text-text truncate">
+                      {match.team_a?.short_name ?? "TBD"}
+                      <span className="text-text-dim mx-1 font-stats text-xs">vs</span>
+                      {match.team_b?.short_name ?? "TBD"}
                     </p>
                     {match.scheduled_at && (
                       <p className="text-xs text-text-muted">

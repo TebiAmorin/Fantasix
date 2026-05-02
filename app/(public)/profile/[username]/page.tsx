@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { Trophy, Target, CheckCircle2, XCircle, User } from "lucide-react"
+import { User } from "lucide-react"
+import { PickCorrectIcon, PickWrongIcon, TargetIcon, StreakIcon } from "@/components/icons/rank-icons"
 import type { Metadata } from "next"
 
 export async function generateMetadata({
@@ -11,7 +12,21 @@ export async function generateMetadata({
   params: Promise<{ username: string }>
 }): Promise<Metadata> {
   const { username } = await params
-  return { title: `${username} — Fantasix` }
+  return {
+    title: `${username} — Fantasix`,
+    description: `${username}'s Pick'Em stats and predictions at BLAST R6 Major SLC 2026.`,
+    openGraph: {
+      title: `${username} on Fantasix`,
+      description: `${username}'s Pick'Em stats at BLAST R6 Major SLC 2026.`,
+      type: "profile",
+      images: [{ url: `/picks/${username}/opengraph-image`, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${username} on Fantasix`,
+      images: [`/picks/${username}/opengraph-image`],
+    },
+  }
 }
 
 export default async function ProfilePage({
@@ -35,42 +50,65 @@ export default async function ProfilePage({
   const { data: { user } } = await supabase.auth.getUser()
   const isOwn = user?.id === profile.id
 
-  // Active tournament
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: tournament } = await (supabase as any)
-    .from("tournaments")
-    .select("id, name, phases(id, name, order_index, is_active)")
-    .eq("is_active", true)
-    .single() as { data: { id: string; name: string; phases: Array<{ id: string; name: string; order_index: number; is_active: boolean }> } | null }
-
-  // Fantasy stats (leaderboard view)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: fantasyStats } = await (supabase as any)
-    .from("fantasy_leaderboard")
-    .select("total_points, phases_played")
-    .eq("user_id", profile.id)
-    .single() as { data: { total_points: number; phases_played: number } | null }
-
   // Pick'Em stats
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: pickemStats } = await (supabase as any)
     .from("pickem_leaderboard")
-    .select("total_points, correct_picks, resolved_picks, accuracy_pct")
+    .select("total_points, correct_picks, resolved_picks, accuracy_pct, current_streak")
     .eq("user_id", profile.id)
-    .single() as { data: { total_points: number; correct_picks: number; resolved_picks: number; accuracy_pct: number } | null }
+    .single() as { data: { total_points: number; correct_picks: number; resolved_picks: number; accuracy_pct: number; current_streak: number } | null }
 
-  // Fantasy roster for active phase
-  const activePhase = tournament?.phases?.find((p) => p.is_active) ?? null
+  // Pick'Em rank — count how many users score strictly higher
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: rawRoster } = activePhase ? await (supabase as any)
-    .from("fantasy_rosters")
-    .select("id, budget_spent, total_points, fantasy_picks(player_id, points_earned, players(nickname, avatar_url, role, fantasy_cost, teams(short_name, logo_url)))")
+  let pickemRank: number | null = null
+  if (pickemStats) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { count } = await (supabase as any)
+      .from("pickem_leaderboard")
+      .select("*", { count: "exact", head: true })
+      .gt("total_points", pickemStats.total_points) as { count: number | null }
+    pickemRank = (count ?? 0) + 1
+  }
+
+  // Phase breakdown (all resolved picks grouped by phase)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: rawPhaseData } = await (supabase as any)
+    .from("match_predictions")
+    .select(`
+      is_correct,
+      match:matches(
+        phase:phases(id, name, order_index)
+      )
+    `)
     .eq("user_id", profile.id)
-    .eq("phase_id", activePhase.id)
-    .single() : { data: null }
+    .not("is_correct", "is", null) as {
+      data: Array<{
+        is_correct: boolean
+        match: { phase: { id: string; name: string; order_index: number } | null } | null
+      }> | null
+    }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const roster = rawRoster as any
+  type PhaseBreakdown = { id: string; name: string; order_index: number; correct: number; total: number }
+  const phaseMap = new Map<string, PhaseBreakdown>()
+  for (const pred of rawPhaseData ?? []) {
+    const phase = pred.match?.phase
+    if (!phase) continue
+    const existing = phaseMap.get(phase.id)
+    if (existing) {
+      existing.total++
+      if (pred.is_correct) existing.correct++
+    } else {
+      phaseMap.set(phase.id, {
+        id: phase.id,
+        name: phase.name,
+        order_index: phase.order_index,
+        correct: pred.is_correct ? 1 : 0,
+        total: 1,
+      })
+    }
+  }
+  const phaseBreakdown = Array.from(phaseMap.values())
+    .sort((a, b) => a.order_index - b.order_index)
 
   // Recent predictions (last 10 resolved)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,16 +128,6 @@ export default async function ProfilePage({
     .limit(10) as { data: any[] | null }
 
   const predictions = rawPredictions ?? []
-
-  // Fantasy rank — limit to 500 to avoid full table scan in JS
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: rankData } = await (supabase as any)
-    .from("fantasy_leaderboard")
-    .select("user_id, total_points")
-    .order("total_points", { ascending: false })
-    .limit(500) as { data: Array<{ user_id: string; total_points: number }> | null }
-
-  const fantasyRank = rankData ? rankData.findIndex((r) => r.user_id === profile.id) + 1 : null
 
   return (
     <div>
@@ -138,6 +166,17 @@ export default async function ProfilePage({
               <p className="text-xs text-text-muted tracking-wide">
                 Member since {new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
               </p>
+              <Link
+                href={`/picks/${profile.username}`}
+                className="inline-flex items-center gap-1.5 text-[10px] text-text-dim hover:text-purple transition-colors mt-1"
+              >
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <polyline points="16 6 12 2 8 6"/>
+                  <line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>
+                {isOwn ? "Share my picks" : "View pick card"}
+              </Link>
             </div>
           </div>
         </div>
@@ -148,153 +187,168 @@ export default async function ProfilePage({
 
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-up">
-          {[
-            { label: "Fantasy Rank",  value: fantasyRank ? `#${fantasyRank}` : "—", color: "text-gold" },
-            { label: "Fantasy Pts",   value: fantasyStats?.total_points ?? 0,        color: "text-gold" },
-            { label: "Pick'Em Pts",   value: pickemStats?.total_points ?? 0,         color: "text-purple" },
-            { label: "Pick Accuracy", value: pickemStats ? `${pickemStats.accuracy_pct ?? 0}%` : "—", color: "text-purple" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="card-tactical rounded-xl p-4 space-y-2 text-center">
-              <p className={`font-stats text-2xl font-bold ${color}`}>{value}</p>
-              <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">{label}</p>
+          {/* Rank */}
+          <div className="card-tactical rounded-xl p-4 space-y-2 text-center">
+            <p className="font-stats text-2xl font-bold text-gold">{pickemRank ? `#${pickemRank}` : "—"}</p>
+            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">Rank</p>
+          </div>
+          {/* Points */}
+          <div className="card-tactical rounded-xl p-4 space-y-2 text-center">
+            <p className="font-stats text-2xl font-bold text-gold">{pickemStats?.total_points ?? 0}</p>
+            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">Points</p>
+          </div>
+          {/* Accuracy */}
+          <div className="card-tactical rounded-xl p-4 space-y-2 text-center">
+            <p className={`font-stats text-2xl font-bold ${(pickemStats?.accuracy_pct ?? 0) >= 60 ? "text-success" : "text-purple"}`}>
+              {pickemStats ? `${pickemStats.accuracy_pct ?? 0}%` : "—"}
+            </p>
+            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">Accuracy</p>
+          </div>
+          {/* Streak */}
+          <div
+            className="rounded-xl p-4 space-y-2 text-center transition-all duration-500"
+            style={
+              (pickemStats?.current_streak ?? 0) >= 2
+                ? { background: "rgba(245,200,66,0.06)", boxShadow: "inset 0 0 0 1px rgba(245,200,66,0.18), inset 0 1px 0 rgba(245,200,66,0.1)" }
+                : { background: "linear-gradient(145deg, #0F1019 0%, #131523 100%)", border: "1px solid rgba(157,111,255,0.12)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4)" }
+            }
+          >
+            <div className="flex items-center justify-center gap-1.5">
+              {(pickemStats?.current_streak ?? 0) >= 2 && (
+                <StreakIcon className="h-5 w-5 text-gold" />
+              )}
+              <p className={`font-stats text-2xl font-bold tabular-nums ${(pickemStats?.current_streak ?? 0) >= 2 ? "text-gold" : "text-text-muted"}`}>
+                {pickemStats?.current_streak ?? 0}
+              </p>
             </div>
-          ))}
+            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">Streak</p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-          {/* Active roster */}
-          <div className="space-y-4">
+        {/* Phase breakdown */}
+        {phaseBreakdown.length > 0 && (
+          <div className="space-y-3">
             <h2 className="font-display text-sm text-text uppercase tracking-wide flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-gold" />
-              {activePhase ? `Roster — ${activePhase.name}` : "Fantasy Roster"}
+              <svg className="h-3.5 w-3.5 text-purple" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path d="M3 3h18v18H3z" opacity=".1" fill="currentColor" stroke="none"/>
+                <path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
+              </svg>
+              Phase Breakdown
             </h2>
-
-            {!activePhase && (
-              <p className="text-sm text-text-muted p-6 border border-dashed border-white/8 rounded-xl text-center">
-                No active phase right now.
-              </p>
-            )}
-
-            {activePhase && !roster && (
-              <div className="p-6 border border-dashed border-white/8 rounded-xl text-center space-y-3">
-                <p className="text-sm text-text-muted">No roster drafted yet.</p>
-                {isOwn && (
-                  <Link href="/fantasy/draft" className="text-xs text-gold hover:underline">
-                    Draft your team →
-                  </Link>
-                )}
-              </div>
-            )}
-
-            {roster && (
-              <div className="card-tactical rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-white/6 flex items-center justify-between">
-                  <p className="text-xs text-text-muted">
-                    Budget: <span className="text-text font-stats font-bold">{roster.budget_spent}</span> pts spent
-                  </p>
-                  <p className="text-xs font-stats font-bold text-gold">{roster.total_points} pts total</p>
-                </div>
-                <div className="divide-y divide-white/5">
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {(roster.fantasy_picks ?? []).map((pick: any) => {
-                    const p = pick.players
-                    return (
-                      <div key={pick.player_id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/2 transition-colors">
-                        <div className="h-8 w-8 rounded-lg overflow-hidden bg-purple/15 border border-purple/20 shrink-0 flex items-center justify-center">
-                          {p?.avatar_url ? (
-                            <Image src={p.avatar_url} alt={p.nickname} width={32} height={32} className="object-cover" />
-                          ) : (
-                            <span className="font-display text-purple text-xs">{p?.nickname?.slice(0,2).toUpperCase()}</span>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-text truncate">{p?.nickname}</p>
-                          <p className="text-xs text-text-muted">
-                            {p?.teams?.short_name ?? "—"}
-                            {p?.role ? ` · ${p.role}` : ""}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="font-stats text-sm font-bold text-gold">{pick.points_earned} pts</p>
-                          <p className="text-[10px] text-text-muted">{p?.fantasy_cost}c</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Recent predictions */}
-          <div className="space-y-4">
-            <h2 className="font-display text-sm text-text uppercase tracking-wide flex items-center gap-2">
-              <Target className="h-4 w-4 text-purple" />
-              Recent Predictions
-            </h2>
-
-            {predictions.length === 0 && (
-              <div className="p-6 border border-dashed border-white/8 rounded-xl text-center space-y-3">
-                <p className="text-sm text-text-muted">No resolved predictions yet.</p>
-                {isOwn && (
-                  <Link href="/predictions" className="text-xs text-purple hover:underline">
-                    Make predictions →
-                  </Link>
-                )}
-              </div>
-            )}
-
-            {predictions.length > 0 && (
-              <div className="card-tactical rounded-xl divide-y divide-white/5 overflow-hidden">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {predictions.map((pred: any) => {
-                  const m = pred.matches
-                  const correct = pred.is_correct === true
-                  return (
-                    <div key={pred.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/2 transition-colors">
-                      {correct ? (
-                        <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-danger shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-text truncate">
-                          <span className="text-text-muted">{m?.team_a?.short_name}</span>
-                          <span className="text-text-muted mx-1 font-stats">vs</span>
-                          <span className="text-text-muted">{m?.team_b?.short_name}</span>
-                        </p>
-                        <p className="text-xs text-text-muted">
-                          Pick: <span className={correct ? "text-success" : "text-danger"}>
-                            {pred.predicted_winner?.short_name}
-                          </span>
-                          {m?.status === "completed" && (
-                            <span className="ml-1 font-stats">
-                              · {m.team_a_maps_won}–{m.team_b_maps_won}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <span className={`font-stats text-sm font-bold shrink-0 ${correct ? "text-gold" : "text-text-muted"}`}>
-                        {correct ? "+1" : "0"}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {phaseBreakdown.map(phase => {
+                const accuracy = phase.total > 0 ? Math.round((phase.correct / phase.total) * 100) : 0
+                const barColor = accuracy >= 75
+                  ? "from-success/80 to-success/40"
+                  : accuracy >= 50
+                  ? "from-purple to-purple/50"
+                  : "from-text-dim/60 to-text-dim/30"
+                return (
+                  <div
+                    key={phase.id}
+                    className="rounded-xl p-4 space-y-3"
+                    style={{ background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)" }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-display text-xs text-text uppercase tracking-wide">{phase.name}</span>
+                      <span className="font-stats text-xs text-text-muted tabular-nums">
+                        {phase.correct}/{phase.total}
                       </span>
                     </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {pickemStats && pickemStats.resolved_picks > 0 && (
-              <div className="card-tactical rounded-xl px-4 py-3 flex items-center justify-between text-xs">
-                <span className="text-text-muted">
-                  {pickemStats.correct_picks}/{pickemStats.resolved_picks} correct
-                </span>
-                <span className="font-stats font-bold text-purple">
-                  {pickemStats.accuracy_pct ?? 0}% accuracy
-                </span>
-              </div>
-            )}
+                    <div className="space-y-1.5">
+                      <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-700`}
+                          style={{ width: `${accuracy}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] font-stats">
+                        <span className="text-text-dim">{accuracy}% accuracy</span>
+                        <span className={`flex items-center gap-0.5 ${accuracy >= 75 ? "text-success" : accuracy >= 50 ? "text-purple" : "text-text-dim"}`}>
+                          {accuracy >= 75 && (
+                            <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.66 11.2c-.23-.3-.51-.56-.77-.82-.67-.6-1.43-1.03-2.07-1.66C13.33 7.26 13 4.85 13.95 3c-.95.23-1.78.75-2.49 1.32-2.59 2.08-3.61 5.75-2.39 8.9.04.1.08.2.08.33 0 .22-.15.42-.35.5-.23.1-.47.04-.66-.12a.58.58 0 0 1-.14-.17c-1.13-1.43-1.31-3.48-.55-5.12C5.78 10 4.87 12.3 5 14.47c.06.5.12 1 .29 1.5.14.6.41 1.2.71 1.73 1.08 1.73 2.95 2.97 4.96 3.22 2.14.27 4.43-.12 6.07-1.6 1.83-1.66 2.47-4.32 1.53-6.6l-.13-.26c-.21-.46-.77-1.26-.77-1.26m-3.16 6.3c-.28.24-.74.5-1.1.6-1.12.4-2.24-.16-2.9-.82 1.19-.28 1.9-1.16 2.11-2.05.17-.8-.15-1.46-.28-2.23-.12-.74-.1-1.37.17-2.06.19.38.39.76.63 1.06.77 1 1.98 1.44 2.24 2.8.04.14.06.28.06.43.03.82-.33 1.72-.93 2.27z"/></svg>
+                          )}
+                          {accuracy >= 75 ? "Hot" : accuracy >= 50 ? "Solid" : "Rough"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
+        )}
+
+        {/* Recent predictions */}
+        <div className="space-y-4">
+          <h2 className="font-display text-sm text-text uppercase tracking-wide flex items-center gap-2">
+            <TargetIcon className="h-4 w-4 text-purple" />
+            Recent Predictions
+          </h2>
+
+          {predictions.length === 0 && (
+            <div className="p-6 border border-dashed border-white/8 rounded-xl text-center space-y-3">
+              <p className="text-sm text-text-muted">No resolved predictions yet.</p>
+              {isOwn && (
+                <Link href="/predictions" className="text-xs text-purple hover:underline">
+                  Make predictions →
+                </Link>
+              )}
+            </div>
+          )}
+
+          {predictions.length > 0 && (
+            <div className="card-tactical rounded-xl divide-y divide-white/5 overflow-hidden">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {predictions.map((pred: any) => {
+                const m = pred.matches
+                const correct = pred.is_correct === true
+                return (
+                  <div key={pred.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/2 transition-colors">
+                    {correct ? (
+                      <PickCorrectIcon className="h-4 w-4 text-success shrink-0" />
+                    ) : (
+                      <PickWrongIcon className="h-4 w-4 text-danger shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-text truncate">
+                        <span className="text-text-muted">{m?.team_a?.short_name}</span>
+                        <span className="text-text-muted mx-1 font-stats">vs</span>
+                        <span className="text-text-muted">{m?.team_b?.short_name}</span>
+                      </p>
+                      <p className="text-xs text-text-muted">
+                        Pick: <span className={correct ? "text-success" : "text-danger"}>
+                          {pred.predicted_winner?.short_name}
+                        </span>
+                        {m?.status === "completed" && (
+                          <span className="ml-1 font-stats">
+                            · {m.team_a_maps_won}–{m.team_b_maps_won}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <span className={`font-stats text-sm font-bold shrink-0 ${correct ? "text-gold" : "text-text-muted"}`}>
+                      {correct ? "+1" : "0"}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {pickemStats && pickemStats.resolved_picks > 0 && (
+            <div className="card-tactical rounded-xl px-4 py-3 flex items-center justify-between text-xs">
+              <span className="text-text-muted">
+                {pickemStats.correct_picks}/{pickemStats.resolved_picks} correct
+              </span>
+              <Link
+                href={`/picks/${profile.username}`}
+                className="font-stats font-bold text-purple hover:text-purple/80 transition-colors"
+              >
+                View all picks →
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

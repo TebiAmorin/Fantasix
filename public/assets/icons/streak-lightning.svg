@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Lightning bolt — tactical, sharp geometry -->
+  <path d="M13.5 2L4 13.5H11.5L10.5 22L20 10H12.5L13.5 2Z"
+        fill="#F5C842" opacity="0.9"/>
+  <!-- Inner highlight plane -->
+  <path d="M13 4.5L6.5 12.5H12L11 19.5L17.5 11H12L13 4.5Z"
+        fill="#07080D" opacity="0.3"/>
+</svg>

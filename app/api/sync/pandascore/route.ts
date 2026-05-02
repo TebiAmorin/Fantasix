@@ -27,6 +27,7 @@ interface PSTeam {
   slug: string
   acronym: string | null
   image_url: string | null
+  dark_mode_image_url?: string | null
 }
 
 interface PSGame {
@@ -265,9 +266,9 @@ export async function POST(req: NextRequest) {
       return null
     }
 
-    // Also update pandascore_id on teams we matched by name
+    // Also update pandascore_id + logo_url on teams we matched by name
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const teamPsIdUpdates: Array<{ id: string; pandascore_id: string }> = []
+    const teamPsIdUpdates: Array<{ id: string; pandascore_id: string; logo_url: string | null }> = []
 
     // 4. Upsert each match
     for (const m of psMatches) {
@@ -283,13 +284,14 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // Track team pandascore_id updates
+      // Track team pandascore_id + logo_url updates
+      const psLogoUrl = (t: PSTeam) => t.dark_mode_image_url ?? t.image_url ?? null
       if (!teamByPsId[String(psTeamA.id)]) {
-        teamPsIdUpdates.push({ id: teamAId, pandascore_id: String(psTeamA.id) })
+        teamPsIdUpdates.push({ id: teamAId, pandascore_id: String(psTeamA.id), logo_url: psLogoUrl(psTeamA) })
         teamByPsId[String(psTeamA.id)] = teamAId
       }
       if (!teamByPsId[String(psTeamB.id)]) {
-        teamPsIdUpdates.push({ id: teamBId, pandascore_id: String(psTeamB.id) })
+        teamPsIdUpdates.push({ id: teamBId, pandascore_id: String(psTeamB.id), logo_url: psLogoUrl(psTeamB) })
         teamByPsId[String(psTeamB.id)] = teamBId
       }
 
@@ -372,12 +374,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Update team pandascore_ids in batch
+    // 5. Update team pandascore_id + logo_url in batch
     for (const update of teamPsIdUpdates) {
+      const patch: Record<string, string | null> = { pandascore_id: update.pandascore_id }
+      if (update.logo_url) patch.logo_url = update.logo_url   // only overwrite if PS has a logo
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase as any)
         .from("teams")
-        .update({ pandascore_id: update.pandascore_id })
+        .update(patch)
         .eq("id", update.id)
     }
 

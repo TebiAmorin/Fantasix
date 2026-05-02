@@ -29,8 +29,25 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      // Redirect to the page user came from (or home)
-      const safeRedirect = redirect.startsWith("/") ? redirect : "/"
+      const safeRedirect = redirect.startsWith("/") ? redirect : "/predictions"
+
+      // Check if user has completed profile setup
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: profile } = await (supabase as any)
+          .from("profiles")
+          .select("setup_complete")
+          .eq("id", user.id)
+          .single() as { data: { setup_complete: boolean } | null }
+
+        if (profile && !profile.setup_complete) {
+          return NextResponse.redirect(
+            `${origin}/setup?redirect=${encodeURIComponent(safeRedirect)}`
+          )
+        }
+      }
+
       return NextResponse.redirect(`${origin}${safeRedirect}`)
     }
   }

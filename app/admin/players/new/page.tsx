@@ -13,7 +13,7 @@ export default async function NewPlayerPage() {
     <div className="max-w-3xl space-y-6">
       <div>
         <h1 className="font-display text-2xl text-text">Add Player</h1>
-        <p className="text-text-muted text-sm mt-0.5">Register a new player for the fantasy league</p>
+        <p className="text-text-muted text-sm mt-0.5">Register a new player for the tournament roster</p>
       </div>
       <PlayerForm teams={(teams ?? []) as Team[]} />
     </div>

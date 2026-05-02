@@ -1,7 +1,9 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 
 // ── PREDICTIONS ───────────────────────────────────────────────────────────────
 
@@ -16,7 +18,6 @@ export async function submitPrediction(formData: FormData) {
 
   if (!matchId || !winnerId) return { error: "Missing fields" }
 
-  // Verify match still scheduled (RLS also enforces this, but give clear error)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: match } = await (supabase as any)
     .from("matches")
@@ -27,7 +28,6 @@ export async function submitPrediction(formData: FormData) {
   if (!match) return { error: "Match not found" }
   if (match.status !== "scheduled") return { error: "Match already locked" }
 
-  // Upsert — user can change pick while match is scheduled
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from("match_predictions")
@@ -46,4 +46,135 @@ export async function submitPrediction(formData: FormData) {
 
   revalidatePath("/predictions")
   return { success: true }
+}
+
+// ── PROFILE SETUP (first-login onboarding) ────────────────────────────────────
+
+export async function setupProfile(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
+
+  const username  = (formData.get("username") as string ?? "").trim()
+  const next      = (formData.get("redirect")  as string ?? "/predictions")
+  const safeNext  = next.startsWith("/") ? next : "/predictions"
+
+  // Validate
+  if (!username || !/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+    redirect(`/setup?redirect=${encodeURIComponent(safeNext)}&error=invalid`)
+  }
+
+  // Check uniqueness (case-insensitive)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase as any)
+    .from("profiles")
+    .select("id")
+    .ilike("username", username)
+    .neq("id", user.id)
+    .maybeSingle() as { data: { id: string } | null }
+
+  if (existing) {
+    redirect(`/setup?redirect=${encodeURIComponent(safeNext)}&error=taken`)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("profiles")
+    .update({ username, setup_complete: true, updated_at: new Date().toISOString() })
+    .eq("id", user.id)
+
+  if (error) redirect(`/setup?redirect=${encodeURIComponent(safeNext)}&error=invalid`)
+
+  revalidatePath(`/profile/${username}`)
+  redirect(safeNext)
+}
+
+// ── PROFILE SETTINGS ──────────────────────────────────────────────────────────
+
+export async function updateProfile(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Not authenticated" }
+
+  const newUsername = (formData.get("username") as string ?? "").trim()
+  const avatarUrl   = (formData.get("avatar_url") as string ?? "").trim() || null
+
+  if (!newUsername || !/^[a-zA-Z0-9_]{3,20}$/.test(newUsername)) {
+    return { error: "Username must be 3–20 characters (letters, numbers, underscores only)." }
+  }
+
+  // Check uniqueness
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase as any)
+    .from("profiles")
+    .select("id")
+    .ilike("username", newUsername)
+    .neq("id", user.id)
+    .maybeSingle() as { data: { id: string } | null }
+
+  if (existing) return { error: "That username is already taken." }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("profiles")
+    .update({
+      username:   newUsername,
+      avatar_url: avatarUrl,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath("/settings")
+  revalidatePath(`/profile/${newUsername}`)
+  revalidatePath("/leaderboard")
+  return { success: true, username: newUsername }
+}
+
+// ── AVATAR UPLOAD ─────────────────────────────────────────────────────────────
+
+export async function uploadAvatar(formData: FormData): Promise<{ url?: string; error?: string }> {
+  const supabase     = await createClient()
+  const adminClient  = createAdminClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Not authenticated" }
+
+  const file = formData.get("avatar") as File | null
+  if (!file || file.size === 0) return { error: "No file provided" }
+  if (file.size > 2 * 1024 * 1024) return { error: "File too large (max 2 MB)" }
+
+  const ext  = file.name.split(".").pop()?.toLowerCase() ?? "jpg"
+  const path = `${user.id}/avatar.${ext}`
+
+  const buffer = await file.arrayBuffer()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: uploadError } = await (adminClient as any)
+    .storage
+    .from("avatars")
+    .upload(path, buffer, {
+      contentType: file.type,
+      upsert: true,
+    })
+
+  if (uploadError) return { error: uploadError.message }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: urlData } = (adminClient as any)
+    .storage
+    .from("avatars")
+    .getPublicUrl(path)
+
+  const publicUrl = `${urlData.publicUrl}?v=${Date.now()}`
+
+  // Update profile
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
+    .from("profiles")
+    .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+    .eq("id", user.id)
+
+  revalidatePath("/settings")
+  return { url: publicUrl }
 }

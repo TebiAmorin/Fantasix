@@ -47,7 +47,7 @@ export async function upsertTeam(formData: FormData) {
   if (error) throw new Error(error.message)
 
   revalidatePath("/admin/teams")
-  revalidatePath("/fantasy")
+
   redirect("/admin/teams")
 }
 
@@ -96,7 +96,7 @@ export async function upsertPlayer(formData: FormData) {
   if (error) throw new Error(error.message)
 
   revalidatePath("/admin/players")
-  revalidatePath("/fantasy")
+
   redirect("/admin/players")
 }
 
@@ -198,7 +198,7 @@ export async function upsertPhase(formData: FormData) {
   if (error) throw new Error(error.message)
 
   revalidatePath("/admin/tournaments")
-  revalidatePath("/fantasy")
+
   redirect("/admin/tournaments")
 }
 
@@ -251,6 +251,17 @@ export async function setMatchResult(formData: FormData) {
   const teamBMaps   = parseInt(formData.get("team_b_maps_won") as string) || 0
   const externalUrl = formData.get("external_stats_url") as string
 
+  // Fetch team names before updating (for push copy)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: match } = await (supabase as any)
+    .from("matches")
+    .select(`
+      team_a:teams!matches_team_a_id_fkey(short_name),
+      team_b:teams!matches_team_b_id_fkey(short_name)
+    `)
+    .eq("id", matchId)
+    .single() as { data: { team_a: { short_name: string }; team_b: { short_name: string } } | null }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from("matches")
@@ -267,15 +278,81 @@ export async function setMatchResult(formData: FormData) {
 
   revalidatePath("/admin/matches")
   revalidatePath(`/admin/matches/${matchId}`)
-  revalidatePath("/fantasy")
+  revalidatePath("/predictions")
+  revalidatePath("/leaderboard")
+
+  // Push notification — best-effort, non-blocking
+  if (match) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+    fetch(`${appUrl}/api/push/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.SYNC_SECRET}`,
+      },
+      body: JSON.stringify({
+        title: "Match complete",
+        body: `${match.team_a.short_name} ${teamAMaps}–${teamBMaps} ${match.team_b.short_name} · Check your picks`,
+        tag: `match-result-${matchId}`,
+        url: "/predictions",
+      }),
+      cache: "no-store",
+    }).catch(() => {/* best-effort */})
+  }
+
   return { success: true }
 }
 
 export async function setMatchLive(matchId: string) {
   const supabase = await requireAdmin()
+
+  // Grab team names for the push notification copy
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: match } = await (supabase as any)
+    .from("matches")
+    .select(`
+      team_a:teams!matches_team_a_id_fkey(short_name),
+      team_b:teams!matches_team_b_id_fkey(short_name)
+    `)
+    .eq("id", matchId)
+    .single() as { data: { team_a: { short_name: string }; team_b: { short_name: string } } | null }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("matches").update({ status: "live" }).eq("id", matchId)
   revalidatePath("/admin/matches")
+  revalidatePath("/predictions")
+
+  // Fire push notifications — best-effort, non-blocking
+  if (match) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+    fetch(`${appUrl}/api/push/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.SYNC_SECRET}`,
+      },
+      body: JSON.stringify({
+        title: "Match is LIVE",
+        body: `${match.team_a.short_name} vs ${match.team_b.short_name} · Picks are now locked`,
+        tag: `match-live-${matchId}`,
+        url: "/predictions",
+      }),
+      cache: "no-store",
+    }).catch(() => {/* best-effort */})
+  }
+
+  return { success: true }
+}
+
+export async function setMatchScheduled(matchId: string) {
+  const supabase = await requireAdmin()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
+    .from("matches")
+    .update({ status: "scheduled", winner_id: null, team_a_maps_won: 0, team_b_maps_won: 0 })
+    .eq("id", matchId)
+  revalidatePath("/admin/matches")
+  revalidatePath("/predictions")
   return { success: true }
 }
 

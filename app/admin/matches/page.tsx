@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import Image from "next/image"
 import { Plus, Pencil, ExternalLink, Clock, CheckCircle2, Radio, Settings2 } from "lucide-react"
+import { MatchStatusActions } from "@/components/admin/match-status-actions"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = { title: "Matches — Admin" }
@@ -94,6 +95,9 @@ export default async function MatchesPage() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-end gap-2">
+                      {(match.status === "scheduled" || match.status === "live") && (
+                        <MatchStatusActions matchId={match.id} status={match.status} />
+                      )}
                       {match.external_stats_url && (
                         <a href={match.external_stats_url} target="_blank" rel="noopener noreferrer"
                           className="p-1.5 rounded-md text-text-muted hover:text-purple transition-colors">

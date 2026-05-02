@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Ribbon top bar -->
+  <rect x="10" y="2" width="4" height="5.5" rx="1" fill="#C0C0C0" opacity="0.7"/>
+  <!-- Ribbon notch -->
+  <path d="M10 6L12 9L14 6" fill="#C0C0C0" opacity="0.5"/>
+  <!-- Medal circle outer ring -->
+  <circle cx="12" cy="15.5" r="6.5" fill="#C0C0C0" opacity="0.15"/>
+  <circle cx="12" cy="15.5" r="6.5" stroke="#C0C0C0" stroke-width="1.5" opacity="0.6"/>
+  <!-- Inner ring detail -->
+  <circle cx="12" cy="15.5" r="4.5" stroke="#C0C0C0" stroke-width="0.75" opacity="0.25"/>
+  <!-- Number 2 -->
+  <path d="M10 13.5C10 12.4 10.9 11.5 12 11.5C13.1 11.5 14 12.4 14 13.5C14 14.8 12 16 12 16H14"
+        stroke="#C0C0C0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+</svg>
