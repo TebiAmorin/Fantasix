@@ -404,8 +404,9 @@ function HLine() {
 
 // ─── Qualify slot ─────────────────────────────────────────────────────────────
 
-function QSlot({ seed, teamId, extra }: { seed: number; teamId: string | null; extra: Record<string, TTeam> }) {
+function QSlot({ seed, teamId, extra, logoMap }: { seed: number; teamId: string | null; extra: Record<string, TTeam>; logoMap: Record<string, string> }) {
   const team = teamId ? (ALL_TEAMS[teamId] ?? extra[teamId]) : null
+  const logoUrl = team ? resolveLogoUrl(team.shortName, team.name, logoMap) : undefined
   return (
     <div
       className="flex items-center gap-2 rounded-xl px-3 py-2 min-w-[130px] transition-all duration-300"
@@ -418,12 +419,18 @@ function QSlot({ seed, teamId, extra }: { seed: number; teamId: string | null; e
       <span className="text-[9px] font-display text-white/20 w-4 shrink-0">#{seed}</span>
       {team ? (
         <>
-          <div
-            className="h-5 w-5 rounded-md flex-shrink-0 flex items-center justify-center font-bold"
-            style={{ background: `${team.color}1a`, boxShadow: `inset 0 0 0 1px ${team.color}35`, color: team.color, fontSize: 7 }}
-          >
-            {team.shortName.slice(0, 3)}
-          </div>
+          {logoUrl ? (
+            <div className="relative h-5 w-5 rounded-md flex-shrink-0 overflow-hidden" style={{ background: `${team.color}12` }}>
+              <Image src={logoUrl} alt={team.shortName} fill className="object-contain p-0.5" sizes="20px" unoptimized />
+            </div>
+          ) : (
+            <div
+              className="h-5 w-5 rounded-md flex-shrink-0 flex items-center justify-center font-bold"
+              style={{ background: `${team.color}1a`, boxShadow: `inset 0 0 0 1px ${team.color}35`, color: team.color, fontSize: 7 }}
+            >
+              {team.shortName.slice(0, 3)}
+            </div>
+          )}
           <span className="text-[11px] font-display text-slc-teal truncate">{team.shortName}</span>
         </>
       ) : (
@@ -546,13 +553,13 @@ function PlayInBracket({
               <div className="flex items-center gap-0">
                 {card("pi-u2a")}
                 <HLine />
-                <QSlot seed={13} teamId={m["pi-u2a"].winnerId} extra={et} />
+                <QSlot seed={13} teamId={m["pi-u2a"].winnerId} extra={et} logoMap={logoMap} />
               </div>
               <div style={{ height: 8 }} />
               <div className="flex items-center gap-0">
                 {card("pi-u2b")}
                 <HLine />
-                <QSlot seed={14} teamId={m["pi-u2b"].winnerId} extra={et} />
+                <QSlot seed={14} teamId={m["pi-u2b"].winnerId} extra={et} logoMap={logoMap} />
               </div>
             </div>
           </div>
@@ -587,13 +594,13 @@ function PlayInBracket({
               <div className="flex items-center gap-0">
                 {card("pi-l2a")}
                 <HLine />
-                <QSlot seed={15} teamId={m["pi-l2a"].winnerId} extra={et} />
+                <QSlot seed={15} teamId={m["pi-l2a"].winnerId} extra={et} logoMap={logoMap} />
               </div>
               <div style={{ height: 8 }} />
               <div className="flex items-center gap-0">
                 {card("pi-l2b")}
                 <HLine />
-                <QSlot seed={16} teamId={m["pi-l2b"].winnerId} extra={et} />
+                <QSlot seed={16} teamId={m["pi-l2b"].winnerId} extra={et} logoMap={logoMap} />
               </div>
             </div>
           </div>
@@ -715,19 +722,28 @@ function SwissBracket({
                 {state.teams
                   .filter(t => t.status === "qualified")
                   .sort((a, b) => b.wins - a.wins || b.buchholz - a.buchholz || a.seed - b.seed)
-                  .map((t, i) => (
-                    <div key={t.id} className="flex items-center gap-1.5 text-[10px] font-display">
-                      <span className="text-white/20 w-4 tabular-nums">#{i + 1}</span>
-                      <div
-                        className="h-4 w-4 rounded flex items-center justify-center font-bold flex-shrink-0"
-                        style={{ background: `${t.color}1a`, boxShadow: `inset 0 0 0 1px ${t.color}35`, color: t.color, fontSize: 6 }}
-                      >
-                        {t.shortName.slice(0, 3)}
+                  .map((t, i) => {
+                    const lu = resolveLogoUrl(t.shortName, t.name, logoMap)
+                    return (
+                      <div key={t.id} className="flex items-center gap-1.5 text-[10px] font-display">
+                        <span className="text-white/20 w-4 tabular-nums">#{i + 1}</span>
+                        {lu ? (
+                          <div className="relative h-4 w-4 rounded flex-shrink-0 overflow-hidden" style={{ background: `${t.color}12` }}>
+                            <Image src={lu} alt={t.shortName} fill className="object-contain" sizes="16px" unoptimized />
+                          </div>
+                        ) : (
+                          <div
+                            className="h-4 w-4 rounded flex items-center justify-center font-bold flex-shrink-0"
+                            style={{ background: `${t.color}1a`, boxShadow: `inset 0 0 0 1px ${t.color}35`, color: t.color, fontSize: 6 }}
+                          >
+                            {t.shortName.slice(0, 3)}
+                          </div>
+                        )}
+                        <span className="text-white/70 truncate">{t.shortName}</span>
+                        <span className="text-white/25 text-[8px] ml-auto tabular-nums">{t.wins}-{t.losses}</span>
                       </div>
-                      <span className="text-white/70 truncate">{t.shortName}</span>
-                      <span className="text-white/25 text-[8px] ml-auto tabular-nums">{t.wins}-{t.losses}</span>
-                    </div>
-                  ))}
+                    )
+                  })}
               </>
             )}
             {eliminatedCount(state) > 0 && (
@@ -735,13 +751,23 @@ function SwissBracket({
                 <div className="text-[8px] uppercase tracking-widest text-slc-red/40 font-display mb-1 mt-2">Elim.</div>
                 {state.teams
                   .filter(t => t.status === "eliminated")
-                  .map(t => (
-                    <div key={t.id} className="flex items-center gap-1.5 text-[10px] font-display opacity-40">
-                      <span className="text-white/20 w-4">✕</span>
-                      <span className="text-white/50 truncate">{t.shortName}</span>
-                      <span className="text-white/20 text-[8px] ml-auto tabular-nums">{t.wins}-{t.losses}</span>
-                    </div>
-                  ))}
+                  .map(t => {
+                    const lu = resolveLogoUrl(t.shortName, t.name, logoMap)
+                    return (
+                      <div key={t.id} className="flex items-center gap-1.5 text-[10px] font-display opacity-40">
+                        <span className="text-white/20 w-4">✕</span>
+                        {lu ? (
+                          <div className="relative h-4 w-4 rounded flex-shrink-0 overflow-hidden" style={{ background: `${t.color}12` }}>
+                            <Image src={lu} alt={t.shortName} fill className="object-contain" sizes="16px" unoptimized />
+                          </div>
+                        ) : (
+                          <div className="h-4 w-4 rounded flex-shrink-0" style={{ background: `${t.color}12` }} />
+                        )}
+                        <span className="text-white/50 truncate">{t.shortName}</span>
+                        <span className="text-white/20 text-[8px] ml-auto tabular-nums">{t.wins}-{t.losses}</span>
+                      </div>
+                    )
+                  })}
               </>
             )}
           </div>
@@ -790,16 +816,22 @@ function PlayoffsBracket({
           {Array(8).fill(null).map((_, i) => {
             const id = swissQualifiers[i]
             const team = id ? (ALL_TEAMS[id] ?? et[id]) : null
+            const lu = team ? resolveLogoUrl(team.shortName, team.name, logoMap) : undefined
             return (
               <div
                 key={i}
-                className="px-2.5 py-1 rounded-lg text-[10px] font-display transition-all duration-200"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-display transition-all duration-200"
                 style={
                   team
                     ? { background: "rgba(0,212,184,0.07)", boxShadow: "inset 0 0 0 1px rgba(0,212,184,0.2)", color: "#00D4B8" }
                     : { background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.2)" }
                 }
               >
+                {team && lu && (
+                  <div className="relative h-3.5 w-3.5 flex-shrink-0 overflow-hidden rounded-sm">
+                    <Image src={lu} alt={team.shortName} fill className="object-contain" sizes="14px" unoptimized />
+                  </div>
+                )}
                 {team ? team.shortName : `Seed ${i + 1}`}
               </div>
             )
