@@ -168,7 +168,8 @@
 /* Login page mesh — deep void with a centered radial depth field */
 .bg-login-mesh {
   background:
-    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(157,111,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(196,30,58,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 80%, rgba(0,212,184,0.04) 0%, transparent 55%),
     linear-gradient(160deg, rgba(196,30,58,0.04) 0%, transparent 40%),
     #07080D;
 }
