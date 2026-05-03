@@ -61,6 +61,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${barlowCondensed.variable} ${ibmPlexMono.variable} h-full`}
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
     >
       <body className="min-h-full flex flex-col bg-void">
         {children}
