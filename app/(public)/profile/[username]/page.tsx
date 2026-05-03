@@ -137,10 +137,14 @@ export default async function ProfilePage({
     <div>
       {/* ── Hero ─────────────────────────────────────────── */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-tactical-stripe pointer-events-none" />
-        <div className="absolute inset-0 bg-hero-vignette pointer-events-none" />
+        <div className="absolute inset-0 bg-slc-mesh" />
+        <div className="absolute inset-0 bg-tactical-stripe opacity-30 pointer-events-none" />
+        <div className="absolute -top-12 left-0 w-72 h-72 rounded-full pointer-events-none"
+          style={{ background: "rgba(196,30,58,0.10)", filter: "blur(90px)" }} />
+        <div className="absolute -top-8 right-0 w-56 h-56 rounded-full pointer-events-none"
+          style={{ background: "rgba(0,212,184,0.06)", filter: "blur(70px)" }} />
         <div className="absolute inset-x-0 bottom-0 h-px"
-          style={{ background: "linear-gradient(to right, transparent, rgba(196,30,58,0.25), transparent)" }} />
+          style={{ background: "linear-gradient(to right, transparent, rgba(196,30,58,0.3), rgba(0,212,184,0.15), transparent)" }} />
 
         <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 pt-8 pb-12">
           {/* Breadcrumb */}
@@ -199,42 +203,58 @@ export default async function ProfilePage({
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-up">
-          {/* Rank */}
-          <div className="card-tactical rounded-xl p-4 space-y-2 text-center">
-            <p className="font-stats text-2xl font-bold text-gold">{pickemRank ? `#${pickemRank}` : "—"}</p>
-            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">Rank</p>
-          </div>
-          {/* Points */}
-          <div className="card-tactical rounded-xl p-4 space-y-2 text-center">
-            <p className="font-stats text-2xl font-bold text-gold">{pickemStats?.total_points ?? 0}</p>
-            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">Points</p>
-          </div>
-          {/* Accuracy */}
-          <div className="card-tactical rounded-xl p-4 space-y-2 text-center">
-            <p className={`font-stats text-2xl font-bold ${(pickemStats?.accuracy_pct ?? 0) >= 60 ? "text-success" : "text-gold"}`}>
-              {pickemStats ? `${pickemStats.accuracy_pct ?? 0}%` : "—"}
-            </p>
-            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">Accuracy</p>
-          </div>
-          {/* Streak */}
-          <div
-            className="rounded-xl p-4 space-y-2 text-center transition-all duration-500"
-            style={
-              (pickemStats?.current_streak ?? 0) >= 2
-                ? { background: "rgba(245,200,66,0.06)", boxShadow: "inset 0 0 0 1px rgba(245,200,66,0.18), inset 0 1px 0 rgba(245,200,66,0.1)" }
-                : { background: "linear-gradient(145deg, #0F1019 0%, #131523 100%)", border: "1px solid rgba(157,111,255,0.12)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4)" }
-            }
-          >
-            <div className="flex items-center justify-center gap-1.5">
-              {(pickemStats?.current_streak ?? 0) >= 2 && (
-                <StreakIcon className="h-5 w-5 text-gold" />
-              )}
-              <p className={`font-stats text-2xl font-bold tabular-nums ${(pickemStats?.current_streak ?? 0) >= 2 ? "text-gold" : "text-text-muted"}`}>
-                {pickemStats?.current_streak ?? 0}
-              </p>
-            </div>
-            <p className="text-[9px] text-text-muted uppercase tracking-[0.2em]">Streak</p>
+        <div
+          className="rounded-2xl overflow-hidden animate-fade-up"
+          style={{
+            background: "rgba(255,255,255,0.025)",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07), inset 0 1px 0 rgba(255,255,255,0.05)",
+          }}
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-white/6">
+            {[
+              {
+                value: pickemRank ? `#${pickemRank}` : "—",
+                label: "Rank",
+                color: "text-gold",
+                glow: pickemRank === 1,
+              },
+              {
+                value: String(pickemStats?.total_points ?? 0),
+                label: "Points",
+                color: "text-gold",
+              },
+              {
+                value: pickemStats ? `${pickemStats.accuracy_pct ?? 0}%` : "—",
+                label: "Accuracy",
+                color: (pickemStats?.accuracy_pct ?? 0) >= 60 ? "text-success" : "text-text",
+              },
+              {
+                value: String(pickemStats?.current_streak ?? 0),
+                label: "Streak",
+                color: (pickemStats?.current_streak ?? 0) >= 2 ? "text-gold" : "text-text-muted",
+                streak: (pickemStats?.current_streak ?? 0) >= 2,
+              },
+            ].map(({ value, label, color, glow, streak }, i) => (
+              <div
+                key={label}
+                className={`relative flex flex-col items-center justify-center gap-1.5 py-5 px-4 ${
+                  i % 2 === 0 ? "border-r border-white/6 sm:border-r-0" : ""
+                }`}
+                style={
+                  glow
+                    ? { background: "radial-gradient(ellipse 60% 80% at 50% 100%, rgba(245,200,66,0.06) 0%, transparent 100%)" }
+                    : streak
+                    ? { background: "radial-gradient(ellipse 60% 80% at 50% 100%, rgba(245,200,66,0.04) 0%, transparent 100%)" }
+                    : {}
+                }
+              >
+                <div className="flex items-center gap-1.5">
+                  {streak && <StreakIcon className="h-4 w-4 text-gold" />}
+                  <p className={`font-stats text-2xl font-bold tabular-nums leading-none ${color}`}>{value}</p>
+                </div>
+                <p className="text-[9px] text-text-muted uppercase tracking-[0.2em] font-display">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -300,48 +320,89 @@ export default async function ProfilePage({
           </h2>
 
           {predictions.length === 0 && (
-            <div className="p-6 border border-dashed border-white/8 rounded-xl text-center space-y-3">
+            <div
+              className="p-8 rounded-2xl text-center space-y-3"
+              style={{ background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+            >
+              <div className="h-10 w-10 rounded-xl mx-auto flex items-center justify-center"
+                style={{ background: "rgba(255,255,255,0.04)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)" }}>
+                <svg className="h-5 w-5 text-text-dim" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+              </div>
               <p className="text-sm text-text-muted">No resolved predictions yet.</p>
               {isOwn && (
-                <Link href="/predictions" className="text-xs text-text-muted hover:text-text transition-colors">
-                  Make predictions →
+                <Link
+                  href="/predictions"
+                  className="inline-flex items-center gap-1.5 text-xs text-gold/70 hover:text-gold transition-colors"
+                >
+                  Make your first pick →
                 </Link>
               )}
             </div>
           )}
 
           {predictions.length > 0 && (
-            <div className="card-tactical rounded-xl divide-y divide-white/5 overflow-hidden">
+            <div
+              className="rounded-2xl overflow-hidden divide-y divide-white/5"
+              style={{
+                background: "rgba(255,255,255,0.02)",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)",
+              }}
+            >
               {predictions.map((pred) => {
                 const m = pred.matches
                 const correct = pred.is_correct === true
                 return (
-                  <div key={pred.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/2 transition-colors">
-                    {correct ? (
-                      <PickCorrectIcon className="h-4 w-4 text-success shrink-0" />
-                    ) : (
-                      <PickWrongIcon className="h-4 w-4 text-danger shrink-0" />
-                    )}
+                  <div
+                    key={pred.id}
+                    className={`flex items-center gap-3 px-4 py-3.5 transition-all duration-200 ${
+                      correct ? "hover:bg-success/3" : "hover:bg-white/2"
+                    }`}
+                  >
+                    {/* Result indicator */}
+                    <div
+                      className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${
+                        correct ? "bg-success/10" : "bg-danger/8"
+                      }`}
+                      style={{ boxShadow: `inset 0 0 0 1px ${correct ? "rgba(52,211,153,0.2)" : "rgba(240,90,90,0.15)"}` }}
+                    >
+                      {correct ? (
+                        <PickCorrectIcon className="h-3.5 w-3.5 text-success" />
+                      ) : (
+                        <PickWrongIcon className="h-3.5 w-3.5 text-danger" />
+                      )}
+                    </div>
+
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-text truncate">
-                        <span className="text-text-muted">{m?.team_a?.short_name}</span>
-                        <span className="text-text-muted mx-1 font-stats">vs</span>
-                        <span className="text-text-muted">{m?.team_b?.short_name}</span>
+                      <p className="text-sm text-text truncate font-display tracking-wide">
+                        {m?.team_a?.short_name}
+                        <span className="text-text-dim mx-1.5 text-xs">vs</span>
+                        {m?.team_b?.short_name}
                       </p>
-                      <p className="text-xs text-text-muted">
-                        Pick: <span className={correct ? "text-success" : "text-danger"}>
+                      <p className="text-[11px] text-text-muted mt-0.5">
+                        Picked <span className={`font-medium ${correct ? "text-success" : "text-danger"}`}>
                           {pred.predicted_winner?.short_name}
                         </span>
                         {m?.status === "completed" && (
-                          <span className="ml-1 font-stats">
+                          <span className="ml-1.5 font-stats text-text-dim">
                             · {m.team_a_maps_won}–{m.team_b_maps_won}
                           </span>
                         )}
                       </p>
                     </div>
-                    <span className={`font-stats text-sm font-bold shrink-0 ${correct ? "text-gold" : "text-text-muted"}`}>
+
+                    <div
+                      className={`font-stats text-sm font-bold shrink-0 tabular-nums px-2.5 py-1 rounded-lg ${
+                        correct ? "text-gold" : "text-text-dim"
+                      }`}
+                      style={{
+                        background: correct ? "rgba(245,200,66,0.08)" : "rgba(255,255,255,0.03)",
+                        boxShadow: `inset 0 0 0 1px ${correct ? "rgba(245,200,66,0.15)" : "rgba(255,255,255,0.05)"}`,
+                      }}
+                    >
                       {correct ? "+1" : "0"}
-                    </span>
+                    </div>
                   </div>
                 )
               })}
@@ -349,15 +410,21 @@ export default async function ProfilePage({
           )}
 
           {pickemStats && (pickemStats.resolved_picks ?? 0) > 0 && (
-            <div className="card-tactical rounded-xl px-4 py-3 flex items-center justify-between text-xs">
+            <div
+              className="rounded-xl px-4 py-3 flex items-center justify-between text-xs"
+              style={{ background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+            >
               <span className="text-text-muted">
                 {pickemStats.correct_picks ?? 0}/{pickemStats.resolved_picks ?? 0} correct
               </span>
               <Link
                 href={`/picks/${profile.username}`}
-                className="font-stats font-bold text-gold hover:text-gold/80 transition-colors"
+                className="font-stats font-bold text-gold hover:text-gold/80 transition-colors flex items-center gap-1"
               >
-                View all picks →
+                View all picks
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </Link>
             </div>
           )}

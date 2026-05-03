@@ -194,10 +194,17 @@ export default async function PicksPage({
     <div className="min-h-screen">
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-tactical-stripe pointer-events-none" />
-        <div className="absolute inset-0 bg-hero-vignette pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-px"
-          style={{ background: "linear-gradient(to right, transparent, rgba(196,30,58,0.25), transparent)" }} />
+        <div className="absolute inset-0 bg-slc-mesh" />
+        <div className="absolute inset-0 slc-slash opacity-60 pointer-events-none" />
+
+        {/* Orbs */}
+        <div className="absolute -top-8 -left-8 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: "rgba(196,30,58,0.13)", filter: "blur(80px)" }} />
+        <div className="absolute top-0 right-0 w-48 h-48 rounded-full pointer-events-none"
+          style={{ background: "rgba(0,212,184,0.07)", filter: "blur(70px)" }} />
+
+        <div className="absolute inset-x-0 bottom-0 h-px pointer-events-none"
+          style={{ background: "linear-gradient(to right, transparent, rgba(196,30,58,0.35), rgba(0,212,184,0.2), transparent)" }} />
 
         <div className="relative z-10 mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 pt-10 pb-12">
           <div className="flex items-start gap-5 animate-fade-up">
@@ -338,19 +345,41 @@ export default async function PicksPage({
 
         {/* Join CTA — only for visitors who are not logged in */}
         {!viewer && (
-          <div className="card-tactical rounded-sm px-5 py-5 text-center space-y-3">
-            <p className="font-display text-sm text-text uppercase tracking-wide">
-              Predict the BLAST R6 Major SLC 2026
-            </p>
-            <p className="text-xs text-text-muted">
-              Pick match winners, climb the leaderboard, and compete with fans worldwide.
-            </p>
-            <Link
-              href="/login"
-              className="btn-primary inline-flex h-9 px-6 text-xs mt-1"
-            >
-              Join Fantasix Free
-            </Link>
+          <div
+            className="relative rounded-2xl px-6 py-6 text-center space-y-3 overflow-hidden"
+            style={{
+              background: "linear-gradient(135deg, rgba(196,30,58,0.08) 0%, rgba(13,14,20,0.95) 60%)",
+              boxShadow: "inset 0 0 0 1px rgba(196,30,58,0.18), inset 0 1px 0 rgba(255,255,255,0.04)",
+            }}
+          >
+            {/* BG orb */}
+            <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-40 h-40 rounded-full pointer-events-none"
+              style={{ background: "rgba(196,30,58,0.10)", filter: "blur(50px)" }} />
+
+            <div className="relative">
+              <p className="font-display text-sm text-text uppercase tracking-wide">
+                Predict the BLAST R6 Major SLC 2026
+              </p>
+              <p className="text-xs text-text-muted mt-1 max-w-xs mx-auto leading-relaxed">
+                Pick match winners, climb the leaderboard, and compete with fans worldwide.
+              </p>
+            </div>
+            <div className="relative">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-xs font-display font-bold uppercase tracking-wider transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97]"
+                style={{
+                  background: "linear-gradient(135deg, rgba(196,30,58,0.92) 0%, rgba(170,15,40,1) 100%)",
+                  color: "#FFF",
+                  boxShadow: "0 0 0 1px rgba(196,30,58,0.35), 0 4px 16px rgba(196,30,58,0.22)",
+                }}
+              >
+                Join Fantasix Free
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
           </div>
         )}
 

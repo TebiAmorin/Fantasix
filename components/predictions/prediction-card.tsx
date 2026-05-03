@@ -250,7 +250,7 @@ export function PredictionCard({
           >
             {/* Hover overlay — only when not picked and not locked */}
             {canClick && !pickA && (
-              <div className="absolute inset-0 bg-gradient-to-b from-white/6 to-white/2 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/6 to-white/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             )}
             {/* Picked shimmer overlay */}
             {pickA && !locked && (
@@ -328,7 +328,7 @@ export function PredictionCard({
             style={{ background: sideBg(pickB, winB, loseB) }}
           >
             {canClick && !pickB && (
-              <div className="absolute inset-0 bg-gradient-to-b from-white/6 to-white/2 opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/6 to-white/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             )}
             {pickB && !locked && (
               <div className="absolute inset-0 pick-shimmer pointer-events-none" />
