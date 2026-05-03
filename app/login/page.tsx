@@ -108,16 +108,16 @@ export default async function LoginPage({
       <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/10 to-transparent top-[62%] pointer-events-none" />
 
       {/* Corner grid accents */}
-      <div className="absolute top-0 left-0 w-48 h-48 pointer-events-none opacity-30"
-           style={{backgroundImage:'linear-gradient(rgba(157,111,255,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(157,111,255,0.08) 1px,transparent 1px)',backgroundSize:'24px 24px'}} />
-      <div className="absolute bottom-0 right-0 w-48 h-48 pointer-events-none opacity-30"
-           style={{backgroundImage:'linear-gradient(rgba(157,111,255,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(157,111,255,0.08) 1px,transparent 1px)',backgroundSize:'24px 24px'}} />
+      <div className="absolute top-0 left-0 w-48 h-48 pointer-events-none opacity-25"
+           style={{backgroundImage:'linear-gradient(rgba(196,30,58,0.09) 1px,transparent 1px),linear-gradient(90deg,rgba(196,30,58,0.09) 1px,transparent 1px)',backgroundSize:'24px 24px'}} />
+      <div className="absolute bottom-0 right-0 w-48 h-48 pointer-events-none opacity-25"
+           style={{backgroundImage:'linear-gradient(rgba(0,212,184,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,184,0.07) 1px,transparent 1px)',backgroundSize:'24px 24px'}} />
 
       {/* Card */}
       <div className="relative z-10 w-full max-w-sm mx-auto px-4 py-8">
 
         {/* Double-bezel outer shell */}
-        <div className="rounded-[28px] p-px" style={{background:'linear-gradient(145deg, rgba(157,111,255,0.35) 0%, rgba(157,111,255,0.05) 50%, rgba(245,200,66,0.15) 100%)'}}>
+        <div className="rounded-[28px] p-px" style={{background:'linear-gradient(145deg, rgba(196,30,58,0.35) 0%, rgba(196,30,58,0.06) 50%, rgba(0,212,184,0.12) 100%)'}}>
           <div className="card-premium rounded-[27px] p-8 space-y-6">
 
             {/* Brand */}

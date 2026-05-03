@@ -31,22 +31,25 @@ export default async function SetupPage({
     <div className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-void">
 
       {/* Background */}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 60% 70% at 50% 40%, rgba(157,111,255,0.10) 0%, transparent 60%), #07080D" }} />
-      <div className="absolute inset-0 grid-fine opacity-[0.12] pointer-events-none" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full blur-[130px] opacity-[0.10] animate-glow-pulse pointer-events-none"
-        style={{ background: "rgba(157,111,255,1)" }} />
+      <div className="absolute inset-0 bg-slc-mesh pointer-events-none" />
+      <div className="absolute inset-0 grid-fine opacity-[0.08] pointer-events-none" />
+      {/* Red orb */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[150px] opacity-[0.22] pointer-events-none"
+        style={{ background: "rgba(196,30,58,1)" }} />
+      {/* Teal orb */}
+      <div className="absolute bottom-0 right-0 w-72 h-72 rounded-full blur-[120px] opacity-[0.12] pointer-events-none"
+        style={{ background: "rgba(0,212,184,1)" }} />
 
       <div className="relative z-10 w-full max-w-sm px-4">
-        <div className="rounded-[28px] p-px" style={{ background: "linear-gradient(145deg, rgba(157,111,255,0.3) 0%, rgba(157,111,255,0.04) 60%, transparent 100%)" }}>
+        <div className="rounded-[28px] p-px" style={{ background: "linear-gradient(145deg, rgba(196,30,58,0.35) 0%, rgba(196,30,58,0.06) 55%, rgba(0,212,184,0.12) 100%)" }}>
           <div className="rounded-[27px] p-8 space-y-7" style={{ background: "rgba(13,14,20,0.98)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
 
             {/* Brand */}
             <div className="text-center space-y-3">
               <div className="flex justify-center">
-                <div className="h-12 w-12 rounded-2xl flex items-center justify-center border border-purple/30 bg-purple/10">
-                  <svg className="h-6 w-6 text-purple" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <div className="h-12 w-12 rounded-2xl flex items-center justify-center border border-red/30 bg-red/10">
+                  <svg className="h-6 w-6 text-red" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4 4h16v3H7v4h10v3H7v6H4z"/>
                   </svg>
                 </div>
               </div>
