@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "static-cdn.jtvnw.net",
       },
+      // PandaScore team/player images
+      {
+        protocol: "https",
+        hostname: "cdn-api.pandascore.co",
+      },
     ],
   },
 }
