@@ -181,7 +181,7 @@ export default async function ProfilePage({
                 {profile.username}
               </h1>
               <p className="text-xs text-text-muted tracking-wide">
-                Member since {new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                Member since {new Date(profile.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" })}
               </p>
               <Link
                 href={`/picks/${profile.username}`}
