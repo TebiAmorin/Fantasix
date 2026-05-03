@@ -57,52 +57,72 @@ export default async function Image({
           overflow: "hidden",
         }}
       >
-        {/* Background gradient blobs */}
+        {/* Red orb — top-left */}
         <div style={{
-          position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse 70% 80% at 10% 50%, rgba(157,111,255,0.13) 0%, transparent 55%), radial-gradient(ellipse 50% 60% at 90% 20%, rgba(245,200,66,0.07) 0%, transparent 55%)",
+          position: "absolute",
+          top: -80, left: -80,
+          width: 500, height: 500,
+          borderRadius: "50%",
+          background: "rgba(196,30,58,0.22)",
+          filter: "blur(120px)",
         }} />
 
-        {/* Grid lines — subtle */}
+        {/* Teal orb — bottom-right */}
+        <div style={{
+          position: "absolute",
+          bottom: -100, right: -60,
+          width: 380, height: 380,
+          borderRadius: "50%",
+          background: "rgba(0,212,184,0.14)",
+          filter: "blur(100px)",
+        }} />
+
+        {/* Subtle grid lines */}
         <div style={{
           position: "absolute", inset: 0,
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
           backgroundSize: "60px 60px",
         }} />
 
-        {/* Left accent bar */}
+        {/* Left accent bar — red to teal */}
         <div style={{
           position: "absolute", left: 0, top: 0, bottom: 0, width: 4,
-          background: "linear-gradient(180deg, rgba(157,111,255,0) 0%, rgba(157,111,255,0.8) 40%, rgba(245,200,66,0.6) 100%)",
+          background: "linear-gradient(180deg, rgba(196,30,58,0) 0%, rgba(196,30,58,0.9) 35%, rgba(0,212,184,0.6) 100%)",
         }} />
 
         {/* Top separator */}
         <div style={{
           position: "absolute", top: 0, left: 0, right: 0, height: 1,
-          background: "linear-gradient(90deg, transparent, rgba(157,111,255,0.4), rgba(245,200,66,0.25), transparent)",
+          background: "linear-gradient(90deg, transparent, rgba(196,30,58,0.5), rgba(0,212,184,0.35), transparent)",
+        }} />
+
+        {/* Bottom separator */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0, height: 1,
+          background: "linear-gradient(90deg, transparent, rgba(196,30,58,0.3), rgba(0,212,184,0.2), transparent)",
         }} />
 
         {/* Main content */}
         <div style={{
           position: "relative", zIndex: 10,
           display: "flex", flexDirection: "column",
-          padding: "64px 72px",
+          padding: "60px 72px",
           height: "100%",
           justifyContent: "space-between",
         }}>
 
           {/* Top row: logo + event badge */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {/* Angular F mark */}
               <div style={{
-                width: 32, height: 32, borderRadius: 8,
-                border: "1px solid rgba(157,111,255,0.4)",
-                background: "rgba(157,111,255,0.15)",
+                width: 34, height: 34, borderRadius: 8,
+                border: "1px solid rgba(196,30,58,0.4)",
+                background: "rgba(196,30,58,0.15)",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                {/* Shield icon */}
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(157,111,255,0.9)" strokeWidth="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#C41E3A">
+                  <path d="M4 4h16v3H7v4h10v3H7v6H4z"/>
                 </svg>
               </div>
               <span style={{
@@ -116,9 +136,9 @@ export default async function Image({
 
             <div style={{
               fontSize: 12,
-              color: "rgba(245,200,66,0.7)",
-              background: "rgba(245,200,66,0.08)",
-              border: "1px solid rgba(245,200,66,0.2)",
+              color: "rgba(0,212,184,0.75)",
+              background: "rgba(0,212,184,0.08)",
+              border: "1px solid rgba(0,212,184,0.2)",
               borderRadius: 999,
               padding: "6px 16px",
               letterSpacing: "0.15em",
@@ -129,32 +149,32 @@ export default async function Image({
           </div>
 
           {/* Middle: avatar + username + rank */}
-          <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
             {/* Avatar */}
             <div style={{
-              width: 96, height: 96, borderRadius: 20,
-              border: "1px solid rgba(157,111,255,0.3)",
-              background: "rgba(157,111,255,0.10)",
+              width: 100, height: 100, borderRadius: 22,
+              border: "1.5px solid rgba(196,30,58,0.35)",
+              background: "rgba(196,30,58,0.10)",
               overflow: "hidden",
               flexShrink: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={username} width={96} height={96} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
+                <img src={avatarUrl} alt={username} width={100} height={100} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
               ) : (
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(157,111,255,0.6)" strokeWidth="1.5">
+                <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="rgba(196,30,58,0.6)" strokeWidth="1.5">
                   <circle cx="12" cy="8" r="4"/>
                   <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
                 </svg>
               )}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {rank && (
                 <span style={{
                   fontSize: 13,
-                  color: "rgba(245,200,66,0.8)",
+                  color: "rgba(245,200,66,0.85)",
                   fontWeight: 700,
                   letterSpacing: "0.15em",
                   textTransform: "uppercase",
@@ -163,45 +183,46 @@ export default async function Image({
                 </span>
               )}
               <span style={{
-                fontSize: 64,
+                fontSize: username.length > 14 ? 52 : username.length > 10 ? 60 : 68,
                 fontWeight: 800,
                 color: "#F8FAFC",
-                letterSpacing: "-0.02em",
+                letterSpacing: "-0.025em",
                 lineHeight: 1,
               }}>
                 {username}
               </span>
               <span style={{
-                fontSize: 16,
-                color: "rgba(248,250,252,0.4)",
-                letterSpacing: "0.1em",
+                fontSize: 15,
+                color: "rgba(0,212,184,0.55)",
+                letterSpacing: "0.2em",
                 textTransform: "uppercase",
+                fontWeight: 600,
               }}>
-                Pick&apos;Em Predictions
+                FORGED THE HARD WAY
               </span>
             </div>
           </div>
 
           {/* Bottom: stats row */}
-          <div style={{ display: "flex", gap: 16 }}>
+          <div style={{ display: "flex", gap: 14 }}>
             {[
-              { label: "Points",   value: String(points),    color: "#F5C842" },
-              { label: "Correct",  value: `${correct}/${total}`, color: "#F8FAFC" },
-              { label: "Accuracy", value: `${accuracy}%`,   color: "#F5C842" },
-              ...(streak >= 2 ? [{ label: "Streak", value: `${streak}🔥`, color: "#F5C842" }] : []),
+              { label: "Points",   value: String(points),         color: "#F5C842" },
+              { label: "Correct",  value: `${correct}/${total}`,  color: "#F8FAFC" },
+              { label: "Accuracy", value: `${accuracy}%`,         color: total > 0 ? (accuracy >= 70 ? "rgba(52,211,153,0.9)" : "#F5C842") : "rgba(255,255,255,0.3)" },
+              ...(streak >= 2 ? [{ label: "Streak 🔥", value: `${streak}`, color: "#F5C842" }] : []),
             ].map((stat) => (
               <div key={stat.label} style={{
                 flex: 1,
                 background: "rgba(255,255,255,0.03)",
                 border: "1px solid rgba(255,255,255,0.07)",
                 borderRadius: 16,
-                padding: "20px 24px",
+                padding: "18px 22px",
                 display: "flex",
                 flexDirection: "column",
                 gap: 6,
               }}>
                 <span style={{
-                  fontSize: 32,
+                  fontSize: 34,
                   fontWeight: 800,
                   color: stat.color,
                   lineHeight: 1,
@@ -210,9 +231,9 @@ export default async function Image({
                   {stat.value}
                 </span>
                 <span style={{
-                  fontSize: 11,
-                  color: "rgba(248,250,252,0.35)",
-                  letterSpacing: "0.2em",
+                  fontSize: 10,
+                  color: "rgba(248,250,252,0.3)",
+                  letterSpacing: "0.25em",
                   textTransform: "uppercase",
                 }}>
                   {stat.label}

@@ -36,6 +36,7 @@ export default async function HomePage() {
     { data: teams },
     { data: topPicks },
     { data: liveMatches },
+    { count: matchCount },
   ] = await Promise.all([
     supabase
       .from("teams")
@@ -54,6 +55,12 @@ export default async function HomePage() {
           .select("id")
           .eq("status", "live")
           .limit(10)
+      : Promise.resolve({ data: null, error: null, count: null, status: 200, statusText: "OK" }),
+    tournament
+      ? supabase
+          .from("matches")
+          .select("id", { count: "exact", head: true })
+          .neq("status", "cancelled")
       : Promise.resolve({ data: null, error: null, count: null, status: 200, statusText: "OK" }),
   ])
 
@@ -194,7 +201,7 @@ export default async function HomePage() {
               <div className="flex flex-wrap gap-x-8 gap-y-3 justify-center lg:justify-start pt-2">
                 {[
                   { label: "Teams",      value: `${teamList.length || 20}` },
-                  { label: "Matches",    value: "60+" },
+                  { label: "Matches",    value: matchCount ? `${matchCount}` : "60+" },
                   { label: "Prize Pool", value: prizePool ? `$${(prizePool / 1000).toFixed(0)}K` : "$750K" },
                   { label: "Dates",      value: "May 8–17" },
                 ].map(({ label, value }) => (
