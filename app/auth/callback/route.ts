@@ -40,7 +40,8 @@ export async function GET(request: NextRequest) {
           .eq("id", user.id)
           .single()
 
-        if (profile && !profile.setup_complete) {
+        // Redirect to setup if profile is missing or setup not complete
+        if (!profile || !profile.setup_complete) {
           return NextResponse.redirect(
             `${origin}/setup?redirect=${encodeURIComponent(safeRedirect)}`
           )
