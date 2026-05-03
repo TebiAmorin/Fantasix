@@ -68,7 +68,7 @@ function psStatusToLocal(status: PSMatch["status"]): MatchStatus {
   }
 }
 
-function psFormatLabel(matchType: string, games: number): MatchFormat {
+function psFormatLabel(games: number): MatchFormat {
   // DB enum: bo1 | bo3 | bo5 (lowercase)
   const n = games === 1 ? 1 : games <= 3 ? 3 : 5
   return `bo${n}` as MatchFormat
@@ -120,6 +120,10 @@ export async function POST(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "PANDASCORE_TOKEN not configured" }, { status: 500 })
   }
+
+  // Detect whether this is a cron call (forwarded from GET via X-Triggered-By) or a manual POST
+  const triggeredBy: "cron" | "manual" =
+    req.headers.get("x-triggered-by") === "cron" ? "cron" : "manual"
 
   const supabase = createAdminClient()
   const startedAt = Date.now()
@@ -227,7 +231,7 @@ export async function POST(req: NextRequest) {
       // Log sync with warning
       await supabase.from("sync_logs").insert({
         tournament_id: tournament.id,
-        triggered_by: "manual",
+        triggered_by: triggeredBy,
         status: "success",
         matches_created: 0,
         matches_updated: 0,
@@ -319,7 +323,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const format = psFormatLabel(m.match_type, m.number_of_games)
+      const format = psFormatLabel(m.number_of_games)
       const status = psStatusToLocal(m.status)
 
       const { data: existing } = await supabase
@@ -382,7 +386,7 @@ export async function POST(req: NextRequest) {
   const duration = Date.now() - startedAt
   await supabase.from("sync_logs").insert({
     tournament_id: tournamentDbId,
-    triggered_by: "manual",
+    triggered_by: triggeredBy,
     status: errorMessage ? "error" : "success",
     matches_created: matchesCreated,
     matches_updated: matchesUpdated,
@@ -428,9 +432,12 @@ export async function GET(req: NextRequest) {
 
   // Otherwise: trigger a sync (Vercel Cron path)
   // Build a synthetic POST-like request and call POST
+  // Pass X-Triggered-By so the sync log records "cron" rather than "manual"
+  const syntheticHeaders = new Headers(req.headers)
+  syntheticHeaders.set("x-triggered-by", "cron")
   const syntheticReq = new NextRequest(req.url, {
     method: "POST",
-    headers: req.headers,
+    headers: syntheticHeaders,
   })
   return POST(syntheticReq)
 }

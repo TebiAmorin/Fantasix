@@ -343,6 +343,7 @@ export async function setMatchScheduled(matchId: string) {
     .eq("id", matchId)
   revalidatePath("/admin/matches")
   revalidatePath("/predictions")
+  revalidatePath("/leaderboard")
   return { success: true }
 }
 
@@ -398,13 +399,17 @@ export async function updateScoringConfig(formData: FormData) {
     }
   }
 
-  for (const update of updates) {
-    const { error } = await supabase
-      .from("scoring_config")
-      .update({ value: update.value, updated_at: new Date().toISOString() })
-      .eq("stat_key", update.stat_key)
-    if (error) return { error: error.message }
-  }
+  const now = new Date().toISOString()
+  const results = await Promise.all(
+    updates.map(u =>
+      supabase
+        .from("scoring_config")
+        .update({ value: u.value, updated_at: now })
+        .eq("stat_key", u.stat_key)
+    )
+  )
+  const firstErr = results.find(r => r.error)
+  if (firstErr?.error) return { error: firstErr.error.message }
 
   revalidatePath("/admin/scoring")
   return { success: true }
