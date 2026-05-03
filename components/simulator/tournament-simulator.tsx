@@ -22,7 +22,14 @@ type TAction =
   | { type: "CLEAR_SW"; matchId: string }
   | { type: "SET_PO"; matchId: string; winnerId: string; mapsLoser: 0 | 1 }
   | { type: "CLEAR_PO"; matchId: string }
+  | { type: "SIMULATE_PI" }
+  | { type: "SIMULATE_SW" }
+  | { type: "SIMULATE_PO" }
   | { type: "RESET" }
+
+function rndWinner(a: string, b: string): { w: string; ml: 0 | 1 } {
+  return { w: Math.random() < 0.5 ? a : b, ml: Math.random() < 0.5 ? 0 : 1 }
+}
 
 interface FullState {
   playin: TournamentState
@@ -80,6 +87,63 @@ function fullReducer(state: FullState, action: TAction): FullState {
       return { ...state, playoffs: setTMatchResult(state.playoffs, action.matchId, action.winnerId, action.mapsLoser) }
     case "CLEAR_PO":
       return { ...state, playoffs: clearTMatch(state.playoffs, action.matchId) }
+
+    case "SIMULATE_PI": {
+      // Play all unresolved Play-In matches in dependency order
+      const PI_ORDER = ["pi-u1a","pi-u1b","pi-u1c","pi-u1d","pi-u2a","pi-l1a","pi-u2b","pi-l1b","pi-l2a","pi-l2b"]
+      let playin = state.playin
+      for (const id of PI_ORDER) {
+        const m = playin.matches[id]
+        if (!m.winnerId && m.teamA && m.teamB) {
+          const { w, ml } = rndWinner(m.teamA, m.teamB)
+          playin = setTMatchResult(playin, id, w, ml)
+        }
+      }
+      const newTeams = buildSwissTeams(playin.playinQualifiers)
+      return { playin, swiss: createInitialState(newTeams), playoffs: createTournamentState() }
+    }
+
+    case "SIMULATE_SW": {
+      // Play all rounds round-by-round; each setMatchResult generates the next round
+      let swiss = state.swiss
+      let guard = 0
+      while (!isComplete(swiss) && guard++ < 200) {
+        const rIdx = activeRoundIdx(swiss)
+        const round = swiss.rounds[rIdx]
+        if (!round) break
+        let anyUnplayed = false
+        for (const m of round) {
+          if (!m.winnerId) {
+            anyUnplayed = true
+            const { w, ml } = rndWinner(m.teamAId, m.teamBId)
+            swiss = setMatchResult(swiss, m.id, w, 2, ml)
+          }
+        }
+        if (!anyUnplayed) break
+      }
+      const qualifiers = swiss.teams
+        .filter(t => t.status === "qualified")
+        .sort((a, b) => b.wins - a.wins || b.buchholz - a.buchholz || a.seed - b.seed)
+        .map(t => t.id)
+      const playoffs = qualifiers.length === 8
+        ? populatePlayoffs(state.playoffs, qualifiers)
+        : state.playoffs
+      return { ...state, swiss, playoffs }
+    }
+
+    case "SIMULATE_PO": {
+      const PO_ORDER = ["po-qf1","po-qf2","po-qf3","po-qf4","po-sf1","po-sf2","po-final"]
+      let playoffs = state.playoffs
+      for (const id of PO_ORDER) {
+        const m = playoffs.matches[id]
+        if (m && !m.winnerId && m.teamA && m.teamB) {
+          const { w, ml } = rndWinner(m.teamA, m.teamB)
+          playoffs = setTMatchResult(playoffs, id, w, ml)
+        }
+      }
+      return { ...state, playoffs }
+    }
+
     case "RESET":
       return createFullState()
     default:
@@ -857,11 +921,29 @@ export function TournamentSimulator() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <PhaseProgress phase={phase} swiss={state.swiss} playin={state.playin} />
+
+          {/* Quick Sim button */}
+          <button
+            onClick={() => {
+              if (phase === "playin")   dispatch({ type: "SIMULATE_PI" })
+              if (phase === "swiss")    dispatch({ type: "SIMULATE_SW" })
+              if (phase === "playoffs") dispatch({ type: "SIMULATE_PO" })
+            }}
+            className="flex items-center gap-1.5 text-[9px] font-display uppercase tracking-widest px-2.5 py-1 rounded-lg transition-all duration-200 text-slc-teal/60 hover:text-slc-teal hover:bg-slc-teal/8"
+            style={{ boxShadow: "inset 0 0 0 1px rgba(0,212,184,0.12)" }}
+            title="Randomize all remaining matches in this phase"
+          >
+            <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
+            </svg>
+            Quick sim
+          </button>
+
           <button
             onClick={() => dispatch({ type: "RESET" })}
-            className="text-[9px] font-display uppercase tracking-widest text-white/25 hover:text-slc-red/80 transition-colors px-2 py-1 rounded hover:bg-slc-red/5"
+            className="text-[9px] font-display uppercase tracking-widest text-white/20 hover:text-slc-red/70 transition-colors px-2 py-1 rounded hover:bg-slc-red/5"
           >
             Reset
           </button>
