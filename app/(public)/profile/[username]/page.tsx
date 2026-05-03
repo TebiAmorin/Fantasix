@@ -138,7 +138,7 @@ export default async function ProfilePage({
       {/* ── Hero ─────────────────────────────────────────── */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-slc-mesh" />
-        <div className="absolute inset-0 bg-tactical-stripe opacity-30 pointer-events-none" />
+        <div className="absolute inset-0 slc-slash opacity-100 pointer-events-none" />
         <div className="absolute -top-12 left-0 w-72 h-72 rounded-full pointer-events-none"
           style={{ background: "rgba(196,30,58,0.10)", filter: "blur(90px)" }} />
         <div className="absolute -top-8 right-0 w-56 h-56 rounded-full pointer-events-none"

@@ -863,6 +863,7 @@ function PlayoffsBracket({
   const champion = m["po-final"]?.winnerId
     ? (ALL_TEAMS[m["po-final"].winnerId] ?? et[m["po-final"].winnerId])
     : null
+  const championLogoUrl = champion ? resolveLogoUrl(champion.shortName, champion.name, logoMap) : undefined
 
   return (
     <div className="overflow-x-auto pb-2">
@@ -912,17 +913,33 @@ function PlayoffsBracket({
             {card("po-final")}
             {champion && (
               <div
-                className="mt-1 flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-display font-bold"
-                style={{
-                  background: "linear-gradient(135deg, rgba(196,30,58,0.15), rgba(0,212,184,0.15))",
-                  boxShadow: "inset 0 0 0 1px rgba(0,212,184,0.25)",
-                  color: "#00D4B8",
-                }}
+                className="mt-2 flex flex-col items-center gap-2"
               >
-                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
-                </svg>
-                {champion.shortName} — Champion
+                {/* Trophy glow */}
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full blur-xl pointer-events-none"
+                    style={{ background: "rgba(0,212,184,0.25)", transform: "scale(1.5)" }} />
+                  <div
+                    className="relative flex items-center gap-2.5 px-4 py-2.5 rounded-full text-[11px] font-display font-bold"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(196,30,58,0.18), rgba(0,212,184,0.18))",
+                      boxShadow: "inset 0 0 0 1px rgba(0,212,184,0.3), 0 0 20px rgba(0,212,184,0.15)",
+                      color: "#00D4B8",
+                    }}
+                  >
+                    {championLogoUrl ? (
+                      <div className="relative h-5 w-5 rounded-md overflow-hidden flex-shrink-0" style={{ background: `${champion.color}18` }}>
+                        <Image src={championLogoUrl} alt={champion.shortName} fill className="object-contain p-0.5" sizes="20px" unoptimized />
+                      </div>
+                    ) : (
+                      <svg className="h-3.5 w-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                      </svg>
+                    )}
+                    {champion.shortName}
+                    <span className="text-white/40 text-[9px] font-normal tracking-widest uppercase ml-0.5">Champion</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

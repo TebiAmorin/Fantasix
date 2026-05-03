@@ -22,18 +22,36 @@ export default function SettingsPage() {
     <div>
       {/* Hero */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-tactical-stripe opacity-60 pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-red/20 to-transparent" />
+        <div className="absolute inset-0 bg-slc-mesh" />
+        <div className="absolute inset-0 slc-slash opacity-100 pointer-events-none" />
+
+        {/* Orbs */}
+        <div className="absolute -top-10 -left-6 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: "rgba(196,30,58,0.14)", filter: "blur(80px)" }} />
+        <div className="absolute top-0 right-0 w-48 h-48 rounded-full pointer-events-none"
+          style={{ background: "rgba(0,212,184,0.07)", filter: "blur(70px)" }} />
+
+        {/* Bottom separator */}
+        <div className="absolute inset-x-0 bottom-0 h-px pointer-events-none"
+          style={{ background: "linear-gradient(to right, transparent, rgba(196,30,58,0.4), rgba(0,212,184,0.3), transparent)" }} />
 
         <div className="relative z-10 mx-auto max-w-xl px-4 sm:px-6 pt-10 pb-12">
           <div className="space-y-3 animate-fade-up">
-            <div className="badge-eyebrow text-[9px] w-fit">
-              <svg className="h-2 w-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <div
+              className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 w-fit"
+              style={{ color: "#C41E3A", border: "1px solid rgba(196,30,58,0.3)", background: "rgba(196,30,58,0.10)" }}
+            >
+              <svg className="h-2.5 w-2.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
               </svg>
-              Account
+              <span className="text-[10px] font-display font-bold uppercase tracking-[0.2em]">Account</span>
             </div>
-            <h1 className="font-display text-4xl text-text leading-none">Settings</h1>
+            <h1 className="font-display text-4xl sm:text-5xl text-text leading-none tracking-tight">
+              Settings
+            </h1>
+            <p className="text-text-muted text-sm tracking-wide">
+              Manage your profile and preferences
+            </p>
           </div>
         </div>
       </div>
