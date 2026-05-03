@@ -1,32 +1,14 @@
 "use client"
 
-import { useReducer, useMemo, useState, useCallback } from "react"
+import { useReducer, useMemo, useState, useEffect, useRef } from "react"
 import {
-  createTournamentState,
-  setTMatchResult,
-  clearTMatch,
-  populatePlayoffs,
-  getTeam,
-  ALL_TEAMS,
-  PLAYIN_MATCH_DEFS,
-  PLAYOFF_MATCH_DEFS,
-  type TournamentState,
-  type TTeam,
-  type TMatch,
+  createTournamentState, setTMatchResult, clearTMatch, populatePlayoffs,
+  ALL_TEAMS, type TournamentState, type TTeam, type TMatch,
 } from "@/lib/simulator/tournament"
 import {
-  createInitialState,
-  setMatchResult,
-  clearResult,
-  activeRoundIdx,
-  teamsAtRoundStart,
-  isComplete,
-  qualifiedCount,
-  eliminatedCount,
-  BLAST_SLC_TEAMS,
-  type SwissState,
-  type SwissTeamState,
-  type SimMatch,
+  createInitialState, setMatchResult, clearResult,
+  activeRoundIdx, teamsAtRoundStart, isComplete, qualifiedCount, eliminatedCount,
+  BLAST_SLC_TEAMS, type SwissState, type SwissTeamState, type SimMatch,
 } from "@/lib/simulator/swiss-engine"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,24 +30,17 @@ interface FullState {
   playoffs: TournamentState
 }
 
-// ─── Swiss teams merged with Play-In qualifiers ───────────────────────────────
-
 function buildSwissTeams(playinQuals: Record<number, string | null>) {
-  // Seeds 1-12: direct teams from BLAST_SLC_TEAMS (already in swiss-engine)
-  // Seeds 13-16: Play-In qualifiers — override the swiss-engine defaults
-  const teams = BLAST_SLC_TEAMS.map(t => {
+  return BLAST_SLC_TEAMS.map(t => {
     if (t.seed >= 13 && t.seed <= 16) {
       const qualId = playinQuals[t.seed]
       if (qualId) {
         const team = ALL_TEAMS[qualId]
-        if (team) {
-          return { ...t, id: qualId, name: team.name, shortName: team.shortName, color: team.color }
-        }
+        if (team) return { ...t, id: qualId, name: team.name, shortName: team.shortName, color: team.color }
       }
     }
     return t
   })
-  return teams
 }
 
 function createFullState(): FullState {
@@ -76,57 +51,35 @@ function createFullState(): FullState {
   }
 }
 
-// ─── Reducer ──────────────────────────────────────────────────────────────────
-
 function fullReducer(state: FullState, action: TAction): FullState {
   switch (action.type) {
     case "SET_PI": {
       const playin = setTMatchResult(state.playin, action.matchId, action.winnerId, action.mapsLoser)
-      // Rebuild Swiss if Play-In qualifiers changed
       const newTeams = buildSwissTeams(playin.playinQualifiers)
-      const swiss = createInitialState(newTeams)
-      const playoffs = createTournamentState()
-      return { playin, swiss, playoffs }
+      return { playin, swiss: createInitialState(newTeams), playoffs: createTournamentState() }
     }
     case "CLEAR_PI": {
       const playin = clearTMatch(state.playin, action.matchId)
       const newTeams = buildSwissTeams(playin.playinQualifiers)
-      const swiss = createInitialState(newTeams)
-      const playoffs = createTournamentState()
-      return { playin, swiss, playoffs }
+      return { playin, swiss: createInitialState(newTeams), playoffs: createTournamentState() }
     }
     case "SET_SW": {
       const swiss = setMatchResult(state.swiss, action.matchId, action.winnerId, 2, action.mapsLoser)
-      // If Swiss is complete, populate playoffs
       const qualifiers = swiss.teams
         .filter(t => t.status === "qualified")
-        .sort((a, b) => {
-          const wDiff = b.wins - a.wins
-          if (wDiff !== 0) return wDiff
-          const bhDiff = b.buchholz - a.buchholz
-          if (bhDiff !== 0) return bhDiff
-          return a.seed - b.seed
-        })
+        .sort((a, b) => b.wins - a.wins || b.buchholz - a.buchholz || a.seed - b.seed)
         .map(t => t.id)
-      const allQualified = qualifiers.length === 8
-      const playoffs = allQualified
+      const playoffs = qualifiers.length === 8
         ? populatePlayoffs(state.playoffs, qualifiers)
         : state.playoffs
       return { ...state, swiss, playoffs }
     }
-    case "CLEAR_SW": {
-      const swiss = clearResult(state.swiss, action.matchId)
-      const playoffs = createTournamentState()
-      return { ...state, swiss, playoffs }
-    }
-    case "SET_PO": {
-      const playoffs = setTMatchResult(state.playoffs, action.matchId, action.winnerId, action.mapsLoser)
-      return { ...state, playoffs }
-    }
-    case "CLEAR_PO": {
-      const playoffs = clearTMatch(state.playoffs, action.matchId)
-      return { ...state, playoffs }
-    }
+    case "CLEAR_SW":
+      return { ...state, swiss: clearResult(state.swiss, action.matchId), playoffs: createTournamentState() }
+    case "SET_PO":
+      return { ...state, playoffs: setTMatchResult(state.playoffs, action.matchId, action.winnerId, action.mapsLoser) }
+    case "CLEAR_PO":
+      return { ...state, playoffs: clearTMatch(state.playoffs, action.matchId) }
     case "RESET":
       return createFullState()
     default:
@@ -134,208 +87,310 @@ function fullReducer(state: FullState, action: TAction): FullState {
   }
 }
 
-// ─── Team chip ────────────────────────────────────────────────────────────────
+// ─── Shared team card type ────────────────────────────────────────────────────
 
-function TeamChip({
-  teamId,
-  extraTeams,
-  isWinner,
-  isLoser,
-  onClick,
-  mapsWon,
-  mapsLost,
-  size = "md",
-}: {
-  teamId: string | null
-  extraTeams?: Record<string, TTeam>
-  isWinner?: boolean
-  isLoser?: boolean
-  onClick?: () => void
-  mapsWon?: number
-  mapsLost?: number
-  size?: "sm" | "md"
-}) {
-  const team = teamId ? (ALL_TEAMS[teamId] ?? extraTeams?.[teamId] ?? null) : null
-  const isTbd = !team
+interface CardTeam {
+  id: string
+  shortName: string
+  color: string
+  record?: string // "2-1" for Swiss W-L
+}
 
-  const base = size === "sm"
-    ? "flex items-center gap-1.5 px-2 py-1 rounded text-[10px]"
-    : "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs"
+function tTeamToCard(t: TTeam | null): CardTeam | null {
+  if (!t) return null
+  return { id: t.id, shortName: t.shortName, color: t.color }
+}
 
-  const bg = isWinner
-    ? "bg-white/10 ring-1 ring-white/20"
-    : isLoser
-    ? "opacity-40 bg-white/3"
-    : isTbd
-    ? "bg-white/3 ring-1 ring-dashed ring-white/10"
-    : onClick
-    ? "bg-white/5 ring-1 ring-white/10 hover:bg-white/10 hover:ring-white/20 cursor-pointer transition-all duration-150"
-    : "bg-white/5 ring-1 ring-white/10"
+function swissToCard(t: SwissTeamState | null): CardTeam | null {
+  if (!t) return null
+  return { id: t.id, shortName: t.shortName, color: t.color, record: `${t.wins}-${t.losses}` }
+}
 
+function getCard(id: string | null, extra: Record<string, TTeam>): CardTeam | null {
+  if (!id) return null
+  const t = ALL_TEAMS[id] ?? extra[id]
+  return t ? { id: t.id, shortName: t.shortName, color: t.color } : null
+}
+
+// ─── Team badge ───────────────────────────────────────────────────────────────
+
+function TeamBadge({ team, size = 24 }: { team: CardTeam | null; size?: number }) {
+  if (!team) {
+    return (
+      <div
+        className="rounded-lg flex-shrink-0"
+        style={{ width: size, height: size, background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+      />
+    )
+  }
+  const abbr = team.shortName.slice(0, 3)
   return (
-    <div className={`${base} ${bg} font-display tracking-wide`} onClick={onClick}>
-      {team ? (
-        <>
-          <span
-            className={size === "sm" ? "h-4 w-4 rounded-sm flex-shrink-0 flex items-center justify-center text-[7px] font-bold" : "h-5 w-5 rounded flex-shrink-0 flex items-center justify-center text-[8px] font-bold"}
-            style={{ background: team.color + "30", color: team.color, border: `1px solid ${team.color}40` }}
-          >
-            {team.shortName.slice(0, 2)}
-          </span>
-          <span className={`font-semibold ${isLoser ? "text-text-muted" : "text-text"} truncate max-w-[72px]`}>
-            {team.shortName}
-          </span>
-          {mapsWon !== undefined && (
-            <span className={`ml-auto font-bold tabular-nums ${isWinner ? "text-slc-teal" : "text-text-muted"}`}>
-              {mapsWon}
-            </span>
-          )}
-        </>
-      ) : (
-        <span className="text-text-muted/40 italic">TBD</span>
-      )}
+    <div
+      className="rounded-lg flex-shrink-0 flex items-center justify-center font-bold"
+      style={{
+        width: size,
+        height: size,
+        background: `${team.color}1a`,
+        boxShadow: `inset 0 0 0 1px ${team.color}38`,
+        color: team.color,
+        fontSize: abbr.length >= 3 ? 7 : 9,
+        letterSpacing: "0.04em",
+      }}
+    >
+      {abbr}
     </div>
   )
 }
 
-// ─── Score pills ──────────────────────────────────────────────────────────────
+// ─── Score +/− button ────────────────────────────────────────────────────────
 
-function ScorePills({
-  match,
-  onScore,
-}: {
-  match: { teamA: string | null; teamB: string | null; winnerId: string | null }
-  onScore: (winnerId: string, mapsLoser: 0 | 1) => void
-}) {
-  if (!match.teamA || !match.teamB) return null
-  if (match.winnerId) return null
-
+function Sb({ onClick, disabled, sign }: { onClick: () => void; disabled?: boolean; sign: "+" | "−" }) {
   return (
-    <div className="flex gap-1 justify-center mt-1">
-      {(["2-0", "2-1"] as const).map(score => (
-        <div key={score} className="flex gap-0.5">
-          <button
-            onClick={() => onScore(match.teamA!, score === "2-0" ? 0 : 1)}
-            className="px-1.5 py-0.5 rounded text-[9px] font-display text-text-muted hover:text-slc-red hover:bg-slc-red/10 transition-colors duration-100"
-            title={`${match.teamA} wins ${score}`}
-          >
-            A {score}
-          </button>
-          <button
-            onClick={() => onScore(match.teamB!, score === "2-0" ? 0 : 1)}
-            className="px-1.5 py-0.5 rounded text-[9px] font-display text-text-muted hover:text-slc-red hover:bg-slc-red/10 transition-colors duration-100"
-            title={`${match.teamB} wins ${score}`}
-          >
-            B {score}
-          </button>
-        </div>
-      ))}
-    </div>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="h-5 w-5 rounded flex items-center justify-center text-xs font-bold leading-none select-none bg-white/5 text-white/30 hover:bg-white/10 hover:text-white transition-all duration-100 disabled:opacity-10 disabled:pointer-events-none"
+    >
+      {sign}
+    </button>
   )
 }
 
-// ─── Bracket match card ───────────────────────────────────────────────────────
+// ─── Match Card — core component with +/− score interaction ──────────────────
 
-function BracketMatchCard({
-  match,
-  extraTeams,
+function MatchCard({
+  matchId,
+  teamA,
+  teamB,
+  globalWinnerId,
+  globalMapsA,
+  globalMapsB,
   onScore,
   onClear,
   label,
+  minWidth = 195,
 }: {
-  match: TMatch
-  extraTeams: Record<string, TTeam>
+  matchId: string
+  teamA: CardTeam | null
+  teamB: CardTeam | null
+  globalWinnerId: string | null
+  globalMapsA: number
+  globalMapsB: number
   onScore: (winnerId: string, mapsLoser: 0 | 1) => void
   onClear: () => void
   label?: string
+  minWidth?: number
 }) {
-  const hasTeams = match.teamA && match.teamB
-  const played = !!match.winnerId
+  const [lA, setLA] = useState(0)
+  const [lB, setLB] = useState(0)
+  const skipSync = useRef(false)
+
+  // Sync display from global state (when match resolves externally or resets)
+  useEffect(() => {
+    if (skipSync.current) { skipSync.current = false; return }
+    setLA(globalWinnerId !== null ? globalMapsA : 0)
+    setLB(globalWinnerId !== null ? globalMapsB : 0)
+  }, [globalWinnerId, globalMapsA, globalMapsB, matchId])
+
+  // Reset local scores when teams change (slot gets filled / bracket rebuilds)
+  const prevAId = useRef(teamA?.id)
+  const prevBId = useRef(teamB?.id)
+  useEffect(() => {
+    if (prevAId.current !== teamA?.id || prevBId.current !== teamB?.id) {
+      prevAId.current = teamA?.id
+      prevBId.current = teamB?.id
+      setLA(0)
+      setLB(0)
+    }
+  })
+
+  const has = !!teamA && !!teamB
+  const played = globalWinnerId !== null
+  const aWins = played && globalWinnerId === teamA?.id
+  const bWins = played && globalWinnerId === teamB?.id
+  const dA = played ? globalMapsA : lA
+  const dB = played ? globalMapsB : lB
+
+  function plusA() {
+    if (!has || played) return
+    const n = lA + 1
+    if (n >= 2) onScore(teamA.id, Math.min(lB, 1) as 0 | 1)
+    else setLA(n)
+  }
+  function minusA() {
+    if (!has) return
+    if (aWins) { skipSync.current = true; const pb = globalMapsB; onClear(); setLA(1); setLB(pb) }
+    else if (!played && lA > 0) setLA(lA - 1)
+  }
+  function plusB() {
+    if (!has || played) return
+    const n = lB + 1
+    if (n >= 2) onScore(teamB.id, Math.min(lA, 1) as 0 | 1)
+    else setLB(n)
+  }
+  function minusB() {
+    if (!has) return
+    if (bWins) { skipSync.current = true; const pa = globalMapsA; onClear(); setLB(1); setLA(pa) }
+    else if (!played && lB > 0) setLB(lB - 1)
+  }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-1" style={{ minWidth }}>
       {label && (
-        <span className="text-[8px] uppercase tracking-widest text-text-muted/50 font-display mb-1 text-center">{label}</span>
+        <div className="text-[8px] uppercase tracking-[0.18em] text-white/20 font-display text-center">{label}</div>
       )}
       <div
-        className={`rounded-lg overflow-hidden border ${
-          played
-            ? "border-white/10 bg-surface/60"
-            : hasTeams
-            ? "border-white/8 bg-surface/40"
-            : "border-dashed border-white/6 bg-surface/20"
-        } min-w-[130px]`}
-        style={{ transition: "border-color 0.2s" }}
+        className="rounded-xl overflow-hidden transition-all duration-200"
+        style={{
+          background: played
+            ? "rgba(255,255,255,0.045)"
+            : has
+            ? "rgba(255,255,255,0.025)"
+            : "rgba(255,255,255,0.01)",
+          boxShadow: played
+            ? "inset 0 0 0 1px rgba(255,255,255,0.11)"
+            : has
+            ? "inset 0 0 0 1px rgba(255,255,255,0.07)"
+            : "inset 0 0 0 1px rgba(255,255,255,0.04)",
+        }}
       >
-        <TeamChip
-          teamId={match.teamA}
-          extraTeams={extraTeams}
-          isWinner={played && match.winnerId === match.teamA}
-          isLoser={played && match.winnerId !== match.teamA}
-          onClick={hasTeams && !played ? () => onScore(match.teamA!, 0) : undefined}
-          mapsWon={played ? match.mapsA : undefined}
-        />
-        <div className="h-px bg-white/5" />
-        <TeamChip
-          teamId={match.teamB}
-          extraTeams={extraTeams}
-          isWinner={played && match.winnerId === match.teamB}
-          isLoser={played && match.winnerId !== match.teamB}
-          onClick={hasTeams && !played ? () => onScore(match.teamB!, 0) : undefined}
-          mapsWon={played ? match.mapsB : undefined}
-        />
-        {hasTeams && !played && (
-          <div className="border-t border-white/5 px-1.5 py-1">
-            <div className="flex gap-1 flex-wrap justify-center">
-              {([match.teamA, match.teamB] as string[]).flatMap(winnerId =>
-                ([0, 1] as const).map(ml => {
-                  const wTeam = ALL_TEAMS[winnerId] ?? extraTeams[winnerId]
-                  return (
-                    <button
-                      key={`${winnerId}-${ml}`}
-                      onClick={() => onScore(winnerId, ml)}
-                      className="px-1.5 py-0.5 rounded text-[8px] font-display text-text-muted hover:text-white hover:bg-white/10 transition-all duration-100 whitespace-nowrap"
-                    >
-                      {wTeam?.shortName ?? "?"} 2-{ml}
-                    </button>
-                  )
-                })
-              )}
+        {/* Row A */}
+        <div className={`flex items-center gap-2 px-2.5 py-[7px] transition-opacity duration-200 ${bWins ? "opacity-30" : ""}`}>
+          <TeamBadge team={teamA} size={22} />
+          <div className="flex-1 min-w-0">
+            <span className={`text-[11px] font-display tracking-wide truncate block leading-tight ${aWins ? "text-white" : "text-white/60"}`}>
+              {teamA ? teamA.shortName : <span className="text-white/15 italic text-[9px]">TBD</span>}
+            </span>
+            {teamA?.record && <span className="text-[8px] text-white/25 font-stats tabular-nums">{teamA.record}</span>}
+          </div>
+          {has && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Sb onClick={minusA} disabled={!aWins && (played || lA === 0)} sign="−" />
+              <span className={`w-4 text-center font-bold tabular-nums text-[13px] leading-none select-none ${aWins ? "text-white" : played ? "text-white/20" : "text-white/50"}`}>
+                {dA}
+              </span>
+              <Sb onClick={plusA} disabled={played || lA >= 2 || lB >= 2} sign="+" />
             </div>
+          )}
+        </div>
+
+        <div className="h-px bg-white/[0.055] mx-2" />
+
+        {/* Row B */}
+        <div className={`flex items-center gap-2 px-2.5 py-[7px] transition-opacity duration-200 ${aWins ? "opacity-30" : ""}`}>
+          <TeamBadge team={teamB} size={22} />
+          <div className="flex-1 min-w-0">
+            <span className={`text-[11px] font-display tracking-wide truncate block leading-tight ${bWins ? "text-white" : "text-white/60"}`}>
+              {teamB ? teamB.shortName : <span className="text-white/15 italic text-[9px]">TBD</span>}
+            </span>
+            {teamB?.record && <span className="text-[8px] text-white/25 font-stats tabular-nums">{teamB.record}</span>}
           </div>
-        )}
-        {played && (
-          <div className="border-t border-white/5 flex justify-end px-1.5 py-0.5">
-            <button
-              onClick={onClear}
-              className="text-[8px] text-text-muted/40 hover:text-slc-red/80 transition-colors font-display"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+          {has && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Sb onClick={minusB} disabled={!bWins && (played || lB === 0)} sign="−" />
+              <span className={`w-4 text-center font-bold tabular-nums text-[13px] leading-none select-none ${bWins ? "text-white" : played ? "text-white/20" : "text-white/50"}`}>
+                {dB}
+              </span>
+              <Sb onClick={plusB} disabled={played || lB >= 2 || lA >= 2} sign="+" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-// ─── Bracket connector line ───────────────────────────────────────────────────
-// Creates the classic "}" shape connecting two matches to one.
+// ─── Bracket connectors ───────────────────────────────────────────────────────
 
-function BracketConnector({ topOffset }: { topOffset?: string }) {
+function Conn2({ h }: { h: number }) {
+  // } shape connecting 2 left cards to 1 right card, given half-height h
   return (
-    <div className="flex items-stretch w-5 flex-shrink-0" style={{ minHeight: 0 }}>
-      <div className="flex flex-col w-full">
-        <div className="flex-1 border-r border-t border-white/15" style={{ borderTopRightRadius: 4 }} />
-        <div className="flex-1 border-r border-b border-white/15" style={{ borderBottomRightRadius: 4 }} />
-      </div>
+    <div className="flex-shrink-0 w-4 self-stretch flex flex-col" style={{ minHeight: h * 2 }}>
+      <div className="flex-1 border-r border-t border-white/10" style={{ borderTopRightRadius: 4 }} />
+      <div className="flex-1 border-r border-b border-white/10" style={{ borderBottomRightRadius: 4 }} />
     </div>
   )
 }
 
-function SingleConnector() {
+function HLine() {
+  return <div className="flex-shrink-0 w-3 self-center h-px bg-white/10" />
+}
+
+// ─── Qualify slot ─────────────────────────────────────────────────────────────
+
+function QSlot({ seed, teamId, extra }: { seed: number; teamId: string | null; extra: Record<string, TTeam> }) {
+  const team = teamId ? (ALL_TEAMS[teamId] ?? extra[teamId]) : null
   return (
-    <div className="w-5 flex-shrink-0 border-t border-white/15 self-center" />
+    <div
+      className="flex items-center gap-2 rounded-xl px-3 py-2 min-w-[130px] transition-all duration-300"
+      style={
+        team
+          ? { background: "rgba(0,212,184,0.07)", boxShadow: "inset 0 0 0 1px rgba(0,212,184,0.2)" }
+          : { background: "rgba(255,255,255,0.01)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.04)" }
+      }
+    >
+      <span className="text-[9px] font-display text-white/20 w-4 shrink-0">#{seed}</span>
+      {team ? (
+        <>
+          <div
+            className="h-5 w-5 rounded-md flex-shrink-0 flex items-center justify-center font-bold"
+            style={{ background: `${team.color}1a`, boxShadow: `inset 0 0 0 1px ${team.color}35`, color: team.color, fontSize: 7 }}
+          >
+            {team.shortName.slice(0, 3)}
+          </div>
+          <span className="text-[11px] font-display text-slc-teal truncate">{team.shortName}</span>
+        </>
+      ) : (
+        <span className="text-[10px] font-display text-white/15 italic">TBD</span>
+      )}
+    </div>
+  )
+}
+
+// ─── Phase progress ───────────────────────────────────────────────────────────
+
+function PhaseProgress({ phase, swiss, playin }: { phase: Phase; swiss: SwissState; playin: TournamentState }) {
+  const piCount = Object.values(playin.playinQualifiers).filter(v => v !== null).length
+  const piDone = piCount === 4
+  const swissDone = isComplete(swiss)
+  const qCount = qualifiedCount(swiss)
+
+  return (
+    <div className="flex items-center gap-2 text-[9px] font-display uppercase tracking-wider">
+      <span className={piDone ? "text-slc-teal" : phase === "playin" ? "text-white/70" : "text-white/25"}>
+        {piDone ? "✓" : "·"} Play-In ({piCount}/4)
+      </span>
+      <span className="text-white/15">›</span>
+      <span className={swissDone ? "text-slc-teal" : phase === "swiss" ? "text-white/70" : "text-white/25"}>
+        {swissDone ? "✓" : "·"} Swiss ({qCount}/8)
+      </span>
+      <span className="text-white/15">›</span>
+      <span className={phase === "playoffs" ? "text-white/70" : "text-white/25"}>
+        · Playoffs
+      </span>
+    </div>
+  )
+}
+
+// ─── Section header ───────────────────────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <div className="h-px flex-1 bg-white/6" />
+      <span className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-display">{children}</span>
+      <div className="h-px flex-1 bg-white/6" />
+    </div>
+  )
+}
+
+// ─── Round column label ───────────────────────────────────────────────────────
+
+function RoundLabel({ children, active }: { children: React.ReactNode; active?: boolean }) {
+  return (
+    <div className={`text-[9px] uppercase tracking-[0.18em] font-display text-center mb-2 ${active ? "text-slc-red" : "text-white/25"}`}>
+      {children}
+    </div>
   )
 }
 
@@ -353,140 +408,115 @@ function PlayInBracket({
   const m = state.matches
   const et = state.extraTeams
 
-  const matchCard = (id: string, label?: string) => (
-    <BracketMatchCard
-      key={id}
-      match={m[id]}
-      extraTeams={et}
-      label={label}
-      onScore={(w, ml) => onScore(id, w, ml)}
-      onClear={() => onClear(id)}
-    />
-  )
+  const card = (id: string) => {
+    const match = m[id]
+    return (
+      <MatchCard
+        key={id}
+        matchId={id}
+        teamA={getCard(match.teamA, et)}
+        teamB={getCard(match.teamB, et)}
+        globalWinnerId={match.winnerId}
+        globalMapsA={match.mapsA}
+        globalMapsB={match.mapsB}
+        onScore={(w, ml) => onScore(id, w, ml)}
+        onClear={() => onClear(id)}
+      />
+    )
+  }
 
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="min-w-[700px]">
-        {/* Upper Bracket */}
-        <div className="mb-2">
-          <div className="text-[9px] uppercase tracking-widest text-text-muted/40 font-display mb-3 flex items-center gap-2">
-            <span className="h-px flex-1 bg-white/8" />
-            Upper Bracket
-            <span className="h-px flex-1 bg-white/8" />
-          </div>
+    <div className="overflow-x-auto pb-2">
+      <div className="min-w-[820px] space-y-5">
 
+        {/* ── Upper Bracket ── */}
+        <div>
+          <SectionLabel>Upper Bracket</SectionLabel>
           <div className="flex items-center gap-0">
-            {/* UBR1 */}
+            {/* R1 */}
             <div className="flex flex-col gap-3">
-              <div className="text-[8px] uppercase tracking-widest text-text-muted/30 font-display text-center mb-1">Round 1</div>
-              <div className="flex flex-col gap-3">
-                {matchCard("pi-u1a")}
-                {matchCard("pi-u1b")}
+              <RoundLabel>Round 1</RoundLabel>
+              <div className="flex flex-col gap-2">{card("pi-u1a")}{card("pi-u1b")}</div>
+              <div className="mt-1" />
+              <div className="flex flex-col gap-2">{card("pi-u1c")}{card("pi-u1d")}</div>
+            </div>
+
+            {/* Connectors R1→R2 */}
+            <div className="flex flex-col gap-0 self-stretch pt-6">
+              <div className="flex-1 flex flex-col justify-around">
+                <Conn2 h={42} />
               </div>
-              <div className="flex flex-col gap-3">
-                {matchCard("pi-u1c")}
-                {matchCard("pi-u1d")}
+              <div style={{ height: 20 }} />
+              <div className="flex-1 flex flex-col justify-around">
+                <Conn2 h={42} />
               </div>
             </div>
 
-            {/* Connector UBR1→UBR2 */}
-            <div className="flex flex-col" style={{ gap: 12 }}>
-              <div className="flex flex-col" style={{ height: 90 }}>
-                <BracketConnector />
+            {/* R2 + qualify */}
+            <div className="flex flex-col gap-5 pt-6">
+              <RoundLabel>Round 2</RoundLabel>
+              <div className="flex items-center gap-0">
+                {card("pi-u2a")}
+                <HLine />
+                <QSlot seed={13} teamId={m["pi-u2a"].winnerId} extra={et} />
               </div>
-              <div style={{ height: 12 }} />
-              <div className="flex flex-col" style={{ height: 90 }}>
-                <BracketConnector />
-              </div>
-            </div>
-
-            {/* UBR2 + qualify badges */}
-            <div className="flex flex-col gap-3" style={{ justifyContent: "space-around" }}>
-              <div className="text-[8px] uppercase tracking-widest text-text-muted/30 font-display text-center mb-1">Round 2</div>
-              <div className="relative">
-                {matchCard("pi-u2a")}
-                {m["pi-u2a"].winnerId && (
-                  <QualifyBadge seed={13} teamId={m["pi-u2a"].winnerId} extraTeams={et} />
-                )}
-              </div>
-              <div style={{ height: 24 }} />
-              <div className="relative">
-                {matchCard("pi-u2b")}
-                {m["pi-u2b"].winnerId && (
-                  <QualifyBadge seed={14} teamId={m["pi-u2b"].winnerId} extraTeams={et} />
-                )}
+              <div style={{ height: 8 }} />
+              <div className="flex items-center gap-0">
+                {card("pi-u2b")}
+                <HLine />
+                <QSlot seed={14} teamId={m["pi-u2b"].winnerId} extra={et} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-white/6 my-4" />
-
-        {/* Lower Bracket */}
+        {/* ── Lower Bracket ── */}
         <div>
-          <div className="text-[9px] uppercase tracking-widest text-text-muted/40 font-display mb-3 flex items-center gap-2">
-            <span className="h-px flex-1 bg-white/8" />
-            Lower Bracket
-            <span className="h-px flex-1 bg-white/8" />
-          </div>
-
+          <SectionLabel>Lower Bracket</SectionLabel>
           <div className="flex items-center gap-0">
             {/* LBR1 */}
             <div className="flex flex-col gap-3">
-              <div className="text-[8px] uppercase tracking-widest text-text-muted/30 font-display text-center mb-1">Round 1</div>
-              {matchCard("pi-l1a")}
-              <div style={{ height: 12 }} />
-              {matchCard("pi-l1b")}
+              <RoundLabel>Round 1</RoundLabel>
+              {card("pi-l1a")}
+              <div className="mt-1" />
+              {card("pi-l1b")}
             </div>
 
             {/* Connectors LBR1→LBR2 */}
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col" style={{ height: 64 }}>
-                <BracketConnector />
+            <div className="flex flex-col self-stretch pt-6 gap-0">
+              <div className="flex-1 flex flex-col justify-around">
+                <Conn2 h={32} />
               </div>
-              <div style={{ height: 24 }} />
-              <div className="flex flex-col" style={{ height: 64 }}>
-                <BracketConnector />
+              <div style={{ height: 20 }} />
+              <div className="flex-1 flex flex-col justify-around">
+                <Conn2 h={32} />
               </div>
             </div>
 
-            {/* LBR2 + qualify badges */}
-            <div className="flex flex-col gap-3" style={{ justifyContent: "space-around" }}>
-              <div className="text-[8px] uppercase tracking-widest text-text-muted/30 font-display text-center mb-1">Round 2</div>
-              <div className="relative">
-                {matchCard("pi-l2a")}
-                {m["pi-l2a"].winnerId && (
-                  <QualifyBadge seed={15} teamId={m["pi-l2a"].winnerId} extraTeams={et} />
-                )}
+            {/* LBR2 + qualify */}
+            <div className="flex flex-col gap-4 pt-6">
+              <RoundLabel>Round 2</RoundLabel>
+              <div className="flex items-center gap-0">
+                {card("pi-l2a")}
+                <HLine />
+                <QSlot seed={15} teamId={m["pi-l2a"].winnerId} extra={et} />
               </div>
-              <div style={{ height: 24 }} />
-              <div className="relative">
-                {matchCard("pi-l2b")}
-                {m["pi-l2b"].winnerId && (
-                  <QualifyBadge seed={16} teamId={m["pi-l2b"].winnerId} extraTeams={et} />
-                )}
+              <div style={{ height: 8 }} />
+              <div className="flex items-center gap-0">
+                {card("pi-l2b")}
+                <HLine />
+                <QSlot seed={16} teamId={m["pi-l2b"].winnerId} extra={et} />
               </div>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   )
 }
 
-function QualifyBadge({ seed, teamId, extraTeams }: { seed: number; teamId: string | null; extraTeams: Record<string, TTeam> }) {
-  const team = teamId ? (ALL_TEAMS[teamId] ?? extraTeams[teamId]) : null
-  return (
-    <div className="mt-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-display"
-      style={{ background: "rgba(0,212,184,0.08)", border: "1px solid rgba(0,212,184,0.2)", color: "#00D4B8" }}>
-      <span className="font-bold">✓ Swiss #{seed}</span>
-      {team && <span className="text-white/60">· {team.shortName}</span>}
-    </div>
-  )
-}
-
-// ─── Swiss bracket (5-round flow) ────────────────────────────────────────────
+// ─── Swiss bracket ────────────────────────────────────────────────────────────
 
 function SwissBracket({
   state,
@@ -501,91 +531,85 @@ function SwissBracket({
   const activeRound = activeRoundIdx(state)
   const complete = isComplete(state)
 
-  // Bracket labels per bracket (wins-losses)
   const BRACKET_LABELS: Record<string, string> = {
-    "0-0": "Opening",
-    "1-0": "1-0 Bracket", "0-1": "0-1 Bracket",
-    "2-0": "2-0 Bracket", "1-1": "1-1 Bracket", "0-2": "0-2 Bracket",
-    "2-1": "2-1 Bracket", "1-2": "1-2 Bracket",
-    "2-2": "Match Point",
+    "0-0": "Opening", "1-0": "1-0", "0-1": "0-1",
+    "2-0": "2-0", "1-1": "1-1", "0-2": "0-2",
+    "2-1": "2-1", "1-2": "1-2", "2-2": "Match Point",
   }
 
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="flex gap-0 min-w-[700px]">
+    <div className="overflow-x-auto pb-2">
+      <div className="flex gap-1 min-w-[720px]">
         {rounds.map((round, rIdx) => {
           const preTeams = teamsAtRoundStart(state, rIdx)
           const preById = Object.fromEntries(preTeams.map(t => [t.id, t]))
+          const isActive = rIdx === activeRound && !complete
+          const isPast = rIdx < activeRound || round.every(m => m.winnerId !== null)
 
-          // Group matches by their W-L bracket
+          // Group by W-L bracket
           const groups = new Map<string, SimMatch[]>()
           for (const m of round) {
             const tA = preById[m.teamAId]
-            const tB = preById[m.teamBId]
-            const key = tA && tB ? `${tA.wins}-${tA.losses}` : "?"
+            const key = tA ? `${tA.wins}-${tA.losses}` : "?"
             if (!groups.has(key)) groups.set(key, [])
             groups.get(key)!.push(m)
           }
 
-          const isActive = rIdx === activeRound && !complete
-          const isPast = rIdx < activeRound || (rIdx === activeRound && round.every(m => m.winnerId !== null))
-
           return (
             <div key={rIdx} className="flex">
-              {/* Round column */}
               <div
-                className={`flex flex-col gap-4 px-3 py-3 rounded-xl min-w-[170px] transition-all duration-300 ${
-                  isActive
-                    ? "bg-white/3 ring-1 ring-slc-red/20"
-                    : "bg-transparent"
+                className={`flex flex-col gap-4 px-3 py-3 rounded-xl min-w-[185px] transition-all duration-300 ${
+                  isActive ? "bg-white/[0.025] ring-1 ring-slc-red/20" : ""
                 }`}
               >
-                {/* Round header */}
                 <div className="text-center">
-                  <div className={`text-[9px] uppercase tracking-widest font-display ${isActive ? "text-slc-red" : "text-text-muted/40"}`}>
-                    {["Round 1", "Round 2", "Round 3", "Round 4", "Round 5"][rIdx]}
+                  <div className={`text-[9px] uppercase tracking-[0.18em] font-display ${isActive ? "text-slc-red" : isPast ? "text-white/20" : "text-white/25"}`}>
+                    Round {rIdx + 1}
                   </div>
-                  <div className="text-[8px] text-text-muted/30 font-display mt-0.5">
+                  <div className="text-[8px] text-white/20 font-display">
                     {round.length} match{round.length !== 1 ? "es" : ""}
                   </div>
                 </div>
 
-                {/* Match groups */}
-                {[...groups.entries()].sort(([a], [b]) => {
-                  const [aw, al] = a.split("-").map(Number)
-                  const [bw, bl] = b.split("-").map(Number)
-                  return (bw - aw) || (al - bl)
-                }).map(([key, matches]) => (
-                  <div key={key} className="flex flex-col gap-2">
-                    {groups.size > 1 && (
-                      <div className="text-[7px] uppercase tracking-widest text-text-muted/30 font-display text-center px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.03)" }}>
-                        {BRACKET_LABELS[key] ?? key}
-                      </div>
-                    )}
-                    {matches.map(m => {
-                      const tA = state.teams.find(t => t.id === m.teamAId)
-                      const tB = state.teams.find(t => t.id === m.teamBId)
-                      const played = !!m.winnerId
-
-                      return (
-                        <SwissMatchCard
-                          key={m.id}
-                          match={m}
-                          teamA={tA ?? null}
-                          teamB={tB ?? null}
-                          onScore={(w, ml) => onScore(m.id, w, ml)}
-                          onClear={() => onClear(m.id)}
-                        />
-                      )
-                    })}
-                  </div>
-                ))}
+                {[...groups.entries()]
+                  .sort(([a], [b]) => {
+                    const [aw, al] = a.split("-").map(Number)
+                    const [bw, bl] = b.split("-").map(Number)
+                    return (bw - aw) || (al - bl)
+                  })
+                  .map(([key, matches]) => (
+                    <div key={key} className="flex flex-col gap-2">
+                      {groups.size > 1 && (
+                        <div className="text-[7px] uppercase tracking-widest text-white/20 font-display text-center px-2 py-0.5 rounded-full"
+                          style={{ background: "rgba(255,255,255,0.025)" }}>
+                          {BRACKET_LABELS[key] ?? key}
+                        </div>
+                      )}
+                      {matches.map(sm => {
+                        const tA = state.teams.find(t => t.id === sm.teamAId) ?? null
+                        const tB = state.teams.find(t => t.id === sm.teamBId) ?? null
+                        return (
+                          <MatchCard
+                            key={sm.id}
+                            matchId={sm.id}
+                            teamA={swissToCard(tA)}
+                            teamB={swissToCard(tB)}
+                            globalWinnerId={sm.winnerId}
+                            globalMapsA={sm.mapsA}
+                            globalMapsB={sm.mapsB}
+                            onScore={(w, ml) => onScore(sm.id, w, ml)}
+                            onClear={() => onClear(sm.id)}
+                            minWidth={170}
+                          />
+                        )
+                      })}
+                    </div>
+                  ))}
               </div>
 
-              {/* Column connector arrow → */}
               {rIdx < rounds.length - 1 && (
-                <div className="flex items-center px-0.5">
-                  <div className="w-4 border-t border-dashed border-white/10" />
+                <div className="flex items-center px-1">
+                  <div className="w-3 border-t border-dashed border-white/8" />
                 </div>
               )}
             </div>
@@ -593,131 +617,46 @@ function SwissBracket({
         })}
 
         {/* Qualified / Eliminated summary */}
-        {complete && (
-          <div className="flex flex-col gap-2 px-4 py-3 justify-center">
-            <div className="text-[9px] uppercase tracking-widest text-slc-teal font-display">Qualified ✓</div>
-            {state.teams.filter(t => t.status === "qualified").sort((a,b) => b.wins - a.wins || b.buchholz - a.buchholz || a.seed - b.seed).map((t, i) => (
-              <div key={t.id} className="flex items-center gap-2 text-[10px] font-display">
-                <span className="text-text-muted/50 w-4">#{i+1}</span>
-                <span
-                  className="h-4 w-4 rounded flex items-center justify-center text-[7px] font-bold flex-shrink-0"
-                  style={{ background: t.color + "30", color: t.color, border: `1px solid ${t.color}40` }}
-                >
-                  {t.shortName.slice(0,2)}
-                </span>
-                <span className="text-text">{t.shortName}</span>
-                <span className="text-text-muted/40 ml-auto">{t.wins}-{t.losses}</span>
-              </div>
-            ))}
+        {(qualifiedCount(state) > 0 || eliminatedCount(state) > 0) && (
+          <div className="flex flex-col gap-1.5 px-4 py-3 justify-center min-w-[120px]">
+            {qualifiedCount(state) > 0 && (
+              <>
+                <div className="text-[8px] uppercase tracking-widest text-slc-teal/60 font-display mb-1">Qualified</div>
+                {state.teams
+                  .filter(t => t.status === "qualified")
+                  .sort((a, b) => b.wins - a.wins || b.buchholz - a.buchholz || a.seed - b.seed)
+                  .map((t, i) => (
+                    <div key={t.id} className="flex items-center gap-1.5 text-[10px] font-display">
+                      <span className="text-white/20 w-4 tabular-nums">#{i + 1}</span>
+                      <div
+                        className="h-4 w-4 rounded flex items-center justify-center font-bold flex-shrink-0"
+                        style={{ background: `${t.color}1a`, boxShadow: `inset 0 0 0 1px ${t.color}35`, color: t.color, fontSize: 6 }}
+                      >
+                        {t.shortName.slice(0, 3)}
+                      </div>
+                      <span className="text-white/70 truncate">{t.shortName}</span>
+                      <span className="text-white/25 text-[8px] ml-auto tabular-nums">{t.wins}-{t.losses}</span>
+                    </div>
+                  ))}
+              </>
+            )}
+            {eliminatedCount(state) > 0 && (
+              <>
+                <div className="text-[8px] uppercase tracking-widest text-slc-red/40 font-display mb-1 mt-2">Elim.</div>
+                {state.teams
+                  .filter(t => t.status === "eliminated")
+                  .map(t => (
+                    <div key={t.id} className="flex items-center gap-1.5 text-[10px] font-display opacity-40">
+                      <span className="text-white/20 w-4">✕</span>
+                      <span className="text-white/50 truncate">{t.shortName}</span>
+                      <span className="text-white/20 text-[8px] ml-auto tabular-nums">{t.wins}-{t.losses}</span>
+                    </div>
+                  ))}
+              </>
+            )}
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-function SwissMatchCard({
-  match,
-  teamA,
-  teamB,
-  onScore,
-  onClear,
-}: {
-  match: SimMatch
-  teamA: SwissTeamState | null
-  teamB: SwissTeamState | null
-  onScore: (winnerId: string, ml: 0 | 1) => void
-  onClear: () => void
-}) {
-  const played = !!match.winnerId
-
-  return (
-    <div className={`rounded-lg overflow-hidden border min-w-[150px] ${
-      played ? "border-white/10 bg-surface/60" : "border-white/8 bg-surface/40"
-    }`}>
-      <SwissTeamRow
-        team={teamA}
-        isWinner={played && match.winnerId === match.teamAId}
-        isLoser={played && match.winnerId !== match.teamAId}
-        mapsWon={played ? match.mapsA : undefined}
-        onClick={!played && teamA && teamB ? () => onScore(match.teamAId, 0) : undefined}
-      />
-      <div className="h-px bg-white/5" />
-      <SwissTeamRow
-        team={teamB}
-        isWinner={played && match.winnerId === match.teamBId}
-        isLoser={played && match.winnerId !== match.teamBId}
-        mapsWon={played ? match.mapsB : undefined}
-        onClick={!played && teamA && teamB ? () => onScore(match.teamBId, 0) : undefined}
-      />
-      {teamA && teamB && !played && (
-        <div className="border-t border-white/5 px-1.5 py-1">
-          <div className="flex gap-1 flex-wrap justify-center">
-            {([teamA, teamB] as SwissTeamState[]).flatMap(t =>
-              ([0, 1] as const).map(ml => (
-                <button
-                  key={`${t.id}-${ml}`}
-                  onClick={() => onScore(t.id, ml)}
-                  className="px-1.5 py-0.5 rounded text-[8px] font-display text-text-muted hover:text-white hover:bg-white/10 transition-all duration-100 whitespace-nowrap"
-                >
-                  {t.shortName} 2-{ml}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-      {played && (
-        <div className="border-t border-white/5 flex justify-end px-1.5 py-0.5">
-          <button onClick={onClear} className="text-[8px] text-text-muted/40 hover:text-slc-red/80 transition-colors font-display">✕</button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function SwissTeamRow({
-  team,
-  isWinner,
-  isLoser,
-  mapsWon,
-  onClick,
-}: {
-  team: SwissTeamState | null
-  isWinner?: boolean
-  isLoser?: boolean
-  mapsWon?: number
-  onClick?: () => void
-}) {
-  if (!team) return (
-    <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs">
-      <span className="text-text-muted/30 italic text-[10px]">TBD</span>
-    </div>
-  )
-  return (
-    <div
-      className={`flex items-center gap-2 px-2.5 py-1.5 text-[11px] font-display tracking-wide ${
-        isLoser ? "opacity-40" : ""
-      } ${onClick ? "cursor-pointer hover:bg-white/5 transition-colors" : ""}`}
-      onClick={onClick}
-    >
-      <span
-        className="h-5 w-5 rounded flex-shrink-0 flex items-center justify-center text-[7px] font-bold"
-        style={{ background: team.color + "30", color: team.color, border: `1px solid ${team.color}40` }}
-      >
-        {team.shortName.slice(0, 2)}
-      </span>
-      <span className={`font-semibold ${isLoser ? "text-text-muted" : "text-text"} truncate max-w-[68px]`}>
-        {team.shortName}
-      </span>
-      <span className="text-text-muted/40 text-[8px] ml-auto whitespace-nowrap">
-        {team.wins}-{team.losses}
-      </span>
-      {mapsWon !== undefined && (
-        <span className={`font-bold tabular-nums text-xs ${isWinner ? "text-slc-teal" : "text-text-muted/40"}`}>
-          {mapsWon}
-        </span>
-      )}
     </div>
   )
 }
@@ -743,125 +682,127 @@ function PlayoffsBracket({
   if (!swissComplete) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <div className="text-4xl opacity-20">🏆</div>
+        <div
+          className="h-12 w-12 rounded-2xl flex items-center justify-center"
+          style={{ background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+        >
+          <svg className="h-5 w-5 text-white/20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+          </svg>
+        </div>
         <p className="text-text-muted text-sm font-display">Complete the Swiss Stage to unlock Playoffs</p>
-        <div className="flex gap-2 flex-wrap justify-center">
-          {swissQualifiers.map((id, i) => (
-            <div
-              key={i}
-              className={`px-2 py-1 rounded text-[10px] font-display ${id ? "text-slc-teal" : "text-text-muted/30 border border-dashed border-white/10"}`}
-              style={id ? { background: "rgba(0,212,184,0.08)", border: "1px solid rgba(0,212,184,0.2)" } : {}}
-            >
-              {id ? (ALL_TEAMS[id] ?? et[id])?.shortName ?? id : `#${i + 1}`}
-            </div>
-          ))}
+        <div className="flex gap-2 flex-wrap justify-center mt-2">
+          {Array(8).fill(null).map((_, i) => {
+            const id = swissQualifiers[i]
+            const team = id ? (ALL_TEAMS[id] ?? et[id]) : null
+            return (
+              <div
+                key={i}
+                className="px-2.5 py-1 rounded-lg text-[10px] font-display transition-all duration-200"
+                style={
+                  team
+                    ? { background: "rgba(0,212,184,0.07)", boxShadow: "inset 0 0 0 1px rgba(0,212,184,0.2)", color: "#00D4B8" }
+                    : { background: "rgba(255,255,255,0.02)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.2)" }
+                }
+              >
+                {team ? team.shortName : `Seed ${i + 1}`}
+              </div>
+            )
+          })}
         </div>
       </div>
     )
   }
 
-  const matchCard = (id: string, label?: string) => (
-    <BracketMatchCard
-      key={id}
-      match={m[id]}
-      extraTeams={et}
-      label={label}
-      onScore={(w, ml) => onScore(id, w, ml)}
-      onClear={() => onClear(id)}
-    />
-  )
+  const card = (id: string, label?: string) => {
+    const match = m[id]
+    return (
+      <MatchCard
+        key={id}
+        matchId={id}
+        teamA={getCard(match.teamA, et)}
+        teamB={getCard(match.teamB, et)}
+        globalWinnerId={match.winnerId}
+        globalMapsA={match.mapsA}
+        globalMapsB={match.mapsB}
+        onScore={(w, ml) => onScore(id, w, ml)}
+        onClear={() => onClear(id)}
+        label={label}
+      />
+    )
+  }
 
   const champion = m["po-final"]?.winnerId
     ? (ALL_TEAMS[m["po-final"].winnerId] ?? et[m["po-final"].winnerId])
     : null
 
   return (
-    <div className="overflow-x-auto pb-4">
-      <div className="min-w-[640px]">
-        {/* Quarter Finals → Semi Finals → Final */}
+    <div className="overflow-x-auto pb-2">
+      <div className="min-w-[680px]">
         <div className="flex items-center gap-0">
-          {/* QFs — split into two halves */}
-          <div className="flex flex-col gap-8">
-            <div className="text-[8px] uppercase tracking-widest text-text-muted/30 font-display text-center mb-1">Quarter Finals</div>
+          {/* Quarter Finals */}
+          <div className="flex flex-col gap-5">
+            <RoundLabel>Quarter Finals</RoundLabel>
             <div className="flex flex-col gap-2">
-              {matchCard("po-qf1", "1 vs 8")}
-              {matchCard("po-qf2", "4 vs 5")}
+              {card("po-qf1", "1 vs 8")}
+              {card("po-qf2", "4 vs 5")}
             </div>
+            <div className="mt-1" />
             <div className="flex flex-col gap-2">
-              {matchCard("po-qf3", "2 vs 7")}
-              {matchCard("po-qf4", "3 vs 6")}
+              {card("po-qf3", "2 vs 7")}
+              {card("po-qf4", "3 vs 6")}
             </div>
           </div>
 
           {/* Connectors QF→SF */}
-          <div className="flex flex-col gap-0">
-            <div className="flex flex-col" style={{ height: 100 }}>
-              <BracketConnector />
+          <div className="flex flex-col self-stretch pt-6 gap-0">
+            <div className="flex-1 flex flex-col justify-around">
+              <Conn2 h={46} />
             </div>
-            <div style={{ height: 64 }} />
-            <div className="flex flex-col" style={{ height: 100 }}>
-              <BracketConnector />
+            <div style={{ height: 28 }} />
+            <div className="flex-1 flex flex-col justify-around">
+              <Conn2 h={46} />
             </div>
           </div>
 
-          {/* SFs */}
-          <div className="flex flex-col gap-8" style={{ justifyContent: "space-around" }}>
-            <div className="text-[8px] uppercase tracking-widest text-text-muted/30 font-display text-center mb-1">Semi Finals</div>
-            {matchCard("po-sf1")}
-            <div style={{ height: 16 }} />
-            {matchCard("po-sf2")}
+          {/* Semi Finals */}
+          <div className="flex flex-col gap-10 pt-6">
+            <RoundLabel>Semi Finals</RoundLabel>
+            {card("po-sf1")}
+            <div style={{ height: 4 }} />
+            {card("po-sf2")}
           </div>
 
           {/* Connectors SF→Final */}
-          <div className="flex flex-col" style={{ height: 200 }}>
-            <BracketConnector />
+          <div className="self-stretch pt-6" style={{ minHeight: 220 }}>
+            <Conn2 h={60} />
           </div>
 
-          {/* Final */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="text-[8px] uppercase tracking-widest text-text-muted/30 font-display text-center mb-1">Grand Final</div>
-            {matchCard("po-final")}
+          {/* Grand Final + champion */}
+          <div className="flex flex-col items-center gap-3 pt-6">
+            <RoundLabel>Grand Final</RoundLabel>
+            {card("po-final")}
             {champion && (
               <div
-                className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-display font-bold"
+                className="mt-1 flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-display font-bold"
                 style={{
-                  background: "linear-gradient(135deg, rgba(196,30,58,0.2), rgba(0,212,184,0.2))",
-                  border: "1px solid rgba(0,212,184,0.3)",
+                  background: "linear-gradient(135deg, rgba(196,30,58,0.15), rgba(0,212,184,0.15))",
+                  boxShadow: "inset 0 0 0 1px rgba(0,212,184,0.25)",
                   color: "#00D4B8",
                 }}
               >
-                🏆 {champion.shortName} — Champion
+                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                </svg>
+                {champion.shortName} — Champion
               </div>
             )}
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-// ─── Progress bar ─────────────────────────────────────────────────────────────
-
-function PhaseProgress({ phase, swiss, playin }: { phase: Phase; swiss: SwissState; playin: TournamentState }) {
-  const playinDone = Object.values(playin.playinQualifiers).every(v => v !== null)
-  const swissDone = isComplete(swiss)
-  const qCount = qualifiedCount(swiss)
-  const eCount = eliminatedCount(swiss)
-  const piQCount = Object.values(playin.playinQualifiers).filter(v => v !== null).length
-
-  return (
-    <div className="flex items-center gap-3 text-[9px] font-display uppercase tracking-wider text-text-muted/60">
-      <span className={playinDone ? "text-slc-teal" : phase === "playin" ? "text-white" : ""}>
-        {playinDone ? "✓" : "·"} Play-In {playinDone ? `(${piQCount}/4)` : `(${piQCount}/4)`}
-      </span>
-      <span className="text-white/20">›</span>
-      <span className={swissDone ? "text-slc-teal" : phase === "swiss" ? "text-white" : ""}>
-        {swissDone ? "✓" : "·"} Swiss {swissDone ? `(8/8)` : `(${qCount}/8)`}
-      </span>
-      <span className="text-white/20">›</span>
-      <span className={phase === "playoffs" ? "text-white" : ""}>
-        · Playoffs
-      </span>
     </div>
   )
 }
@@ -887,11 +828,16 @@ export function TournamentSimulator() {
     { id: "playoffs", label: "Playoffs", tag: "Top 8" },
   ]
 
+  const piCount = Object.values(state.playin.playinQualifiers).filter(v => v !== null).length
+
   return (
-    <div className="space-y-6">
-      {/* Phase tabs + progress */}
+    <div className="space-y-5">
+      {/* Header: phase tabs + progress + reset */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex gap-1 p-1 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div
+          className="flex gap-1 p-1 rounded-xl"
+          style={{ background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)" }}
+        >
           {PHASES.map(p => (
             <button
               key={p.id}
@@ -904,7 +850,7 @@ export function TournamentSimulator() {
             >
               {p.label}
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-display ${
-                phase === p.id ? "bg-white/20 text-white" : "bg-white/6 text-text-muted/60"
+                phase === p.id ? "bg-white/20 text-white" : "bg-white/5 text-white/30"
               }`}>
                 {p.tag}
               </span>
@@ -915,16 +861,26 @@ export function TournamentSimulator() {
           <PhaseProgress phase={phase} swiss={state.swiss} playin={state.playin} />
           <button
             onClick={() => dispatch({ type: "RESET" })}
-            className="text-[9px] font-display uppercase tracking-widest text-text-muted/40 hover:text-slc-red/80 transition-colors px-2 py-1 rounded hover:bg-slc-red/5"
+            className="text-[9px] font-display uppercase tracking-widest text-white/25 hover:text-slc-red/80 transition-colors px-2 py-1 rounded hover:bg-slc-red/5"
           >
             Reset
           </button>
         </div>
       </div>
 
-      {/* Phase content */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="p-4 sm:p-6">
+      {/* Phase container */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ background: "rgba(255,255,255,0.018)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+      >
+        {/* Score controls hint */}
+        <div className="px-5 pt-4 pb-0 flex items-center gap-2">
+          <div className="text-[9px] text-white/20 font-display">
+            Click <span className="text-white/35 font-bold px-1 py-0.5 rounded bg-white/5">−</span> and <span className="text-white/35 font-bold px-1 py-0.5 rounded bg-white/5">+</span> to set map scores · reaching 2 resolves the match · <span className="text-white/35">−</span> on a winner's score (2) to undo
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-5">
           {phase === "playin" && (
             <PlayInBracket
               state={state.playin}
@@ -951,63 +907,49 @@ export function TournamentSimulator() {
         </div>
       </div>
 
-      {/* Swiss qualifiers banner — shown below Swiss tab when teams qualify */}
-      {phase === "swiss" && qualifiedCount(state.swiss) > 0 && (
-        <div className="rounded-xl px-4 py-3" style={{ background: "rgba(0,212,184,0.05)", border: "1px solid rgba(0,212,184,0.15)" }}>
-          <div className="text-[9px] uppercase tracking-widest text-slc-teal/70 font-display mb-2">Swiss Qualifiers</div>
-          <div className="flex flex-wrap gap-2">
-            {state.swiss.teams
-              .filter(t => t.status === "qualified")
-              .sort((a, b) => b.wins - a.wins || b.buchholz - a.buchholz || a.seed - b.seed)
-              .map((t, i) => (
-                <div
-                  key={t.id}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-display"
-                  style={{ background: "rgba(0,212,184,0.08)", border: "1px solid rgba(0,212,184,0.2)" }}
-                >
-                  <span className="text-slc-teal/60 text-[8px]">#{i+1}</span>
-                  <span
-                    className="h-4 w-4 rounded flex items-center justify-center text-[7px] font-bold"
-                    style={{ background: t.color + "30", color: t.color }}
-                  >
-                    {t.shortName.slice(0, 2)}
-                  </span>
-                  <span className="text-text">{t.shortName}</span>
-                </div>
-              ))}
-            {eliminatedCount(state.swiss) > 0 && (
-              <div className="ml-auto flex items-center gap-1 text-[9px] text-text-muted/40 font-display">
-                <span className="text-slc-red/60">{eliminatedCount(state.swiss)}</span> eliminated
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Auto-advance hint */}
-      {phase === "playin" && Object.values(state.playin.playinQualifiers).some(v => v !== null) && (
+      {/* Auto-advance banners */}
+      {phase === "playin" && piCount > 0 && piCount < 4 && (
         <div
           className="rounded-xl px-4 py-3 flex items-center gap-3"
-          style={{ background: "rgba(196,30,58,0.05)", border: "1px solid rgba(196,30,58,0.15)" }}
+          style={{ background: "rgba(196,30,58,0.05)", boxShadow: "inset 0 0 0 1px rgba(196,30,58,0.12)" }}
         >
-          <span className="text-slc-red/70 text-sm">→</span>
+          <svg className="h-3.5 w-3.5 text-slc-red/60 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
           <p className="text-[10px] text-text-muted font-display">
-            Play-In qualifiers auto-populate Swiss seeds 13–16.{" "}
+            Play-In qualifiers auto-fill Swiss seeds 13–16.{" "}
             <button onClick={() => setPhase("swiss")} className="text-slc-teal/80 underline hover:text-slc-teal transition-colors">
               Go to Swiss
             </button>
           </p>
         </div>
       )}
-
+      {phase === "playin" && piCount === 4 && (
+        <div
+          className="rounded-xl px-4 py-3 flex items-center gap-3"
+          style={{ background: "rgba(0,212,184,0.05)", boxShadow: "inset 0 0 0 1px rgba(0,212,184,0.15)" }}
+        >
+          <svg className="h-3.5 w-3.5 text-slc-teal shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          <p className="text-[10px] text-text-muted font-display">
+            All 4 Play-In slots filled → Swiss bracket ready.{" "}
+            <button onClick={() => setPhase("swiss")} className="text-slc-teal underline hover:text-slc-teal/80 transition-colors">
+              Go to Swiss →
+            </button>
+          </p>
+        </div>
+      )}
       {swissComplete && phase === "swiss" && (
         <div
           className="rounded-xl px-4 py-3 flex items-center gap-3"
-          style={{ background: "rgba(0,212,184,0.05)", border: "1px solid rgba(0,212,184,0.2)" }}
+          style={{ background: "rgba(0,212,184,0.05)", boxShadow: "inset 0 0 0 1px rgba(0,212,184,0.2)" }}
         >
-          <span className="text-slc-teal text-sm">✓</span>
+          <svg className="h-3.5 w-3.5 text-slc-teal shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
           <p className="text-[10px] text-text-muted font-display">
-            Swiss complete! Top 8 seeded into Playoffs.{" "}
+            Swiss complete — top 8 seeded into Playoffs.{" "}
             <button onClick={() => setPhase("playoffs")} className="text-slc-teal underline hover:text-slc-teal/80 transition-colors">
               View Playoffs →
             </button>
