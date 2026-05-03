@@ -185,7 +185,7 @@ function MatchRow({ match }: { match: Match }) {
             <>
               <span className="opacity-30">·</span>
               <span className="hidden sm:inline">
-                <MatchTime scheduledAt={match.scheduled_at} />
+                <MatchTime scheduledAt={match.scheduled_at} showTz />
               </span>
             </>
           )}
@@ -193,7 +193,7 @@ function MatchRow({ match }: { match: Match }) {
         {/* Time on mobile — second line */}
         {match.scheduled_at && !completed && !live && (
           <div className="sm:hidden text-[9px] text-text-dim">
-            <MatchTime scheduledAt={match.scheduled_at} />
+            <MatchTime scheduledAt={match.scheduled_at} showTz />
           </div>
         )}
       </div>

@@ -165,9 +165,9 @@ export function PredictionCard({
   }
 
   const dateStr = scheduledAt
-    ? new Date(scheduledAt).toLocaleDateString("en-US", {
+    ? new Date(scheduledAt).toLocaleString(undefined, {
         weekday: "short", month: "short", day: "numeric",
-        hour: "2-digit", minute: "2-digit",
+        hour: "2-digit", minute: "2-digit", timeZoneName: "short",
       })
     : null
 

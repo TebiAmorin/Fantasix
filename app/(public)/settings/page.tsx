@@ -95,7 +95,8 @@ function SettingsForm({
   const [preview,       setPreview]       = useState<string | null>(initialAvatarUrl)
   const [isPending,     startSave]        = useTransition()
   const [uploadPending, startUpload]      = useTransition()
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [msg,  setMsg]   = useState<{ ok: boolean; text: string } | null>(null)
+  const [drag, setDrag]  = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const flash = (ok: boolean, text: string) => {
@@ -104,7 +105,18 @@ function SettingsForm({
   }
 
   const handleFile = (file: File) => {
-    // Local preview
+    // Client-side validation before hitting the server
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    if (!allowed.includes(file.type)) {
+      flash(false, "File type not supported. Use JPG, PNG, WebP or GIF.")
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      flash(false, `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 2 MB.`)
+      return
+    }
+
+    // Local preview immediately
     const reader = new FileReader()
     reader.onload = e => setPreview(e.target?.result as string)
     reader.readAsDataURL(file)
@@ -144,7 +156,16 @@ function SettingsForm({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="group relative h-16 w-16 rounded-[18px] overflow-hidden shrink-0 border border-red/15 bg-red/8 hover:border-red/30 transition-all duration-300"
+            onDragOver={e => { e.preventDefault(); setDrag(true) }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={e => {
+              e.preventDefault(); setDrag(false)
+              const f = e.dataTransfer.files?.[0]
+              if (f) handleFile(f)
+            }}
+            className={`group relative h-16 w-16 rounded-[18px] overflow-hidden shrink-0 border transition-all duration-300 ${
+              drag ? "border-slc-teal/50 bg-slc-teal/10 scale-105" : "border-red/15 bg-red/8 hover:border-red/30"
+            }`}
           >
             {preview ? (
               <Image src={preview} alt="Avatar" fill className="object-cover" sizes="64px" />

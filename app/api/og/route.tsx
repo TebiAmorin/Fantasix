@@ -25,29 +25,38 @@ export async function GET(req: NextRequest) {
         {/* Grid texture */}
         <div style={{
           position: "absolute", inset: 0,
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
         }} />
 
-        {/* Radial glows */}
+        {/* SLC red orb — top left */}
         <div style={{
-          position: "absolute", top: -200, left: -200,
-          width: 700, height: 700, borderRadius: "50%",
-          background: "rgba(0,163,224,0.12)",
-          filter: "blur(120px)",
+          position: "absolute", top: -180, left: -120,
+          width: 640, height: 640, borderRadius: "50%",
+          background: "rgba(196,30,58,0.22)",
+          filter: "blur(130px)",
         }} />
+        {/* SLC teal orb — bottom right */}
         <div style={{
-          position: "absolute", bottom: -100, right: -100,
-          width: 500, height: 500, borderRadius: "50%",
-          background: "rgba(157,111,255,0.12)",
-          filter: "blur(100px)",
+          position: "absolute", bottom: -100, right: -80,
+          width: 480, height: 480, borderRadius: "50%",
+          background: "rgba(0,212,184,0.14)",
+          filter: "blur(110px)",
         }} />
+        {/* Gold sweep bottom */}
         <div style={{
           position: "absolute", bottom: 0, left: "50%",
-          width: 600, height: 150, borderRadius: "50%",
-          background: "rgba(245,200,66,0.08)",
+          width: 700, height: 120, borderRadius: "50%",
+          background: "rgba(245,200,66,0.07)",
           filter: "blur(60px)",
           transform: "translateX(-50%)",
+        }} />
+
+        {/* Diagonal slash — top right accent */}
+        <div style={{
+          position: "absolute", top: 0, right: 0,
+          width: 400, height: "100%",
+          background: "linear-gradient(135deg, transparent 0%, rgba(196,30,58,0.04) 50%, transparent 100%)",
         }} />
 
         {/* Content */}
@@ -56,65 +65,73 @@ export async function GET(req: NextRequest) {
           display: "flex", flexDirection: "column",
           justifyContent: "space-between",
           width: "100%", height: "100%",
-          padding: "56px 64px",
+          padding: "52px 64px",
         }}>
           {/* Logo + brand */}
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {/* Angular F mark */}
             <div style={{
-              width: 44, height: 44,
-              background: "rgba(157,111,255,0.2)",
-              border: "1px solid rgba(157,111,255,0.4)",
-              borderRadius: 12,
+              width: 40, height: 40,
+              background: "#C41E3A",
+              clipPath: "polygon(7px 0%, 100% 0%, calc(100% - 7px) 100%, 0% 100%)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(157,111,255,1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
+              <span style={{ fontSize: 18, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em" }}>F</span>
             </div>
             <span style={{
-              fontSize: 20, fontWeight: 700,
-              color: "rgba(248,250,252,0.9)",
-              letterSpacing: "0.15em",
+              fontSize: 18, fontWeight: 700,
+              color: "rgba(240,242,248,0.9)",
+              letterSpacing: "0.18em",
             }}>
               FANTASIX
             </span>
           </div>
 
           {/* Main text */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Eyebrow */}
             <div style={{
-              display: "flex", alignItems: "center", gap: 8,
-              background: "rgba(0,163,224,0.08)",
-              border: "1px solid rgba(0,163,224,0.25)",
+              display: "flex", alignItems: "center", gap: 10,
+              background: "rgba(196,30,58,0.10)",
+              border: "1px solid rgba(196,30,58,0.35)",
               borderRadius: 999,
-              padding: "6px 16px",
+              padding: "7px 18px",
               width: "fit-content",
             }}>
-              <div style={{
-                width: 6, height: 6, borderRadius: "50%",
-                background: "#00A3E0",
-              }} />
-              <span style={{ fontSize: 12, color: "#00A3E0", letterSpacing: "0.2em", fontWeight: 600 }}>
+              {/* Star icon */}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="#C41E3A">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span style={{ fontSize: 12, color: "#C41E3A", letterSpacing: "0.22em", fontWeight: 700 }}>
                 {sub}
               </span>
             </div>
 
             {/* Headline */}
             <div style={{
-              fontSize: title.length > 20 ? 60 : 76,
+              fontSize: title.length > 22 ? 58 : title.length > 14 ? 70 : 82,
               fontWeight: 800,
-              color: "#F8FAFC",
-              lineHeight: 0.95,
-              letterSpacing: "-0.02em",
+              color: "#F0F2F8",
+              lineHeight: 0.93,
+              letterSpacing: "-0.025em",
             }}>
               {title}
+            </div>
+
+            {/* Tagline */}
+            <div style={{
+              fontSize: 14,
+              color: "rgba(0,212,184,0.55)",
+              letterSpacing: "0.28em",
+              fontWeight: 600,
+            }}>
+              FORGED THE HARD WAY
             </div>
           </div>
 
           {/* Bottom stats strip */}
           <div style={{
-            display: "flex", gap: 32, alignItems: "center",
+            display: "flex", gap: 36, alignItems: "center",
           }}>
             {[
               { label: "Teams",   value: "20"    },
@@ -122,9 +139,9 @@ export async function GET(req: NextRequest) {
               { label: "Prize",   value: "$750K" },
               { label: "May",     value: "8–17"  },
             ].map(({ label, value }) => (
-              <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <span style={{ fontSize: 28, fontWeight: 800, color: "#F5C842", fontVariantNumeric: "tabular-nums" }}>{value}</span>
-                <span style={{ fontSize: 11, color: "rgba(248,250,252,0.35)", letterSpacing: "0.2em", fontWeight: 600 }}>{label.toUpperCase()}</span>
+              <div key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 30, fontWeight: 800, color: "#F5C842", fontVariantNumeric: "tabular-nums" }}>{value}</span>
+                <span style={{ fontSize: 10, color: "rgba(240,242,248,0.30)", letterSpacing: "0.22em", fontWeight: 600 }}>{label.toUpperCase()}</span>
               </div>
             ))}
 
@@ -132,25 +149,25 @@ export async function GET(req: NextRequest) {
             <div style={{
               marginLeft: "auto",
               background: "rgba(245,200,66,0.08)",
-              border: "1px solid rgba(245,200,66,0.25)",
+              border: "1px solid rgba(245,200,66,0.28)",
               borderRadius: 999,
-              padding: "8px 20px",
-              display: "flex", alignItems: "center", gap: 8,
+              padding: "9px 22px",
+              display: "flex", alignItems: "center", gap: 9,
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="#F5C842">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
               </svg>
-              <span style={{ fontSize: 13, color: "#F5C842", fontWeight: 700, letterSpacing: "0.15em" }}>
+              <span style={{ fontSize: 13, color: "#F5C842", fontWeight: 700, letterSpacing: "0.16em" }}>
                 PICK&apos;EM
               </span>
             </div>
           </div>
         </div>
 
-        {/* Bottom glow line */}
+        {/* Bottom separator line — red to teal */}
         <div style={{
           position: "absolute", bottom: 0, left: 0, right: 0, height: 2,
-          background: "linear-gradient(to right, transparent, rgba(0,163,224,0.5), rgba(245,200,66,0.4), transparent)",
+          background: "linear-gradient(to right, transparent, rgba(196,30,58,0.7) 30%, rgba(0,212,184,0.5) 70%, transparent)",
         }} />
       </div>
     ),

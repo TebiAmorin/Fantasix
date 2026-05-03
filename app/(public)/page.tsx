@@ -218,13 +218,17 @@ export default async function HomePage() {
                 }}
               >
                 <p className="text-[9px] text-text-dim uppercase tracking-[0.3em] font-display text-center">
-                  {isPostEvent ? "Event ended" : liveCount > 0 ? "Event is live" : "Picks open in"}
+                  {isPostEvent ? "Event ended" : liveCount > 0 ? "Matches live" : "Play-In starts in"}
                 </p>
                 <div className="flex justify-center">
                   <CountdownHero />
                 </div>
                 <p className="text-[10px] text-text-muted text-center font-display tracking-wider">
-                  May 8 · Playins start
+                  {isPostEvent
+                    ? "May 8–17 · SLC 2026"
+                    : liveCount > 0
+                    ? `${liveCount} match${liveCount > 1 ? "es" : ""} happening now`
+                    : "May 8 · 18:00 UTC"}
                 </p>
               </div>
 

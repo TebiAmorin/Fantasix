@@ -74,6 +74,49 @@ export function LeaderboardTable({
     ? filtered.some(r => r.user_id === currentUserId)
     : false
 
+  // Empty data state — no picks submitted yet
+  if (rows.length === 0) {
+    return (
+      <div
+        className="rounded-2xl px-6 py-14 flex flex-col items-center gap-4 text-center"
+        style={{
+          background: "rgba(255,255,255,0.025)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)",
+        }}
+      >
+        {/* Icon */}
+        <div
+          className="h-14 w-14 rounded-2xl flex items-center justify-center"
+          style={{ background: "rgba(196,30,58,0.1)", boxShadow: "inset 0 0 0 1px rgba(196,30,58,0.2)" }}
+        >
+          <svg className="h-6 w-6 text-red/60" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        </div>
+        <div className="space-y-1">
+          <p className="font-display text-sm text-text uppercase tracking-wider">No picks yet</p>
+          <p className="text-xs text-text-muted max-w-[220px]">
+            Be the first on the board — submit your Pick&apos;Em predictions to claim a spot.
+          </p>
+        </div>
+        <Link
+          href="/predictions"
+          className="mt-1 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-display font-bold uppercase tracking-wider transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
+          style={{
+            background: "linear-gradient(135deg, rgba(196,30,58,0.9) 0%, rgba(180,20,45,1) 100%)",
+            color: "#fff",
+            boxShadow: "0 0 0 1px rgba(196,30,58,0.4), 0 4px 16px rgba(196,30,58,0.2)",
+          }}
+        >
+          Make picks
+          <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
       {/* Search bar */}
