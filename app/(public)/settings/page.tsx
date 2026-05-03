@@ -6,9 +6,10 @@ import Image from "next/image"
 import Link from "next/link"
 import { updateProfile, uploadAvatar } from "@/lib/actions/user"
 import { User } from "lucide-react"
+import { PushButton } from "@/components/push/push-button"
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState<{ username: string; avatar_url: string | null; email: string } | null>(null)
+  const [profile, setProfile] = useState<{ id: string; username: string; avatar_url: string | null; email: string } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -67,11 +68,28 @@ export default function SettingsPage() {
             <Link href="/login" className="text-xs text-red hover:text-red/80 transition-colors">Sign in →</Link>
           </div>
         ) : (
-          <SettingsForm
-            initialUsername={profile.username}
-            initialAvatarUrl={profile.avatar_url}
-            email={profile.email ?? ""}
-          />
+          <div className="space-y-5">
+            <SettingsForm
+              initialUsername={profile.username}
+              initialAvatarUrl={profile.avatar_url}
+              email={profile.email ?? ""}
+            />
+
+            {/* Notifications card */}
+            <div className="rounded-2xl p-5 space-y-4"
+              style={{ background: "rgba(255,255,255,0.025)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)" }}>
+              <h2 className="text-[10px] font-display uppercase tracking-[0.2em] text-text-muted">Notifications</h2>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <p className="text-sm text-text">Match alerts</p>
+                  <p className="text-[10px] text-text-dim">Get notified when matches go live or picks are scored</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <PushButton userId={profile.id} />
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

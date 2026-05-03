@@ -13,6 +13,6 @@ export async function GET() {
     .single()
 
   return NextResponse.json(
-    profile ? { username: profile.username, avatar_url: profile.avatar_url, email: user.email ?? "" } : null
+    profile ? { id: user.id, username: profile.username, avatar_url: profile.avatar_url, email: user.email ?? "" } : null
   )
 }
