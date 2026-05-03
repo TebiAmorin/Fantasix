@@ -235,7 +235,8 @@ function Sb({ onClick, disabled, sign }: { onClick: () => void; disabled?: boole
     <button
       onClick={onClick}
       disabled={disabled}
-      className="h-5 w-5 rounded flex items-center justify-center text-xs font-bold leading-none select-none bg-white/5 text-white/30 hover:bg-white/10 hover:text-white transition-all duration-100 disabled:opacity-10 disabled:pointer-events-none"
+      className="h-5 w-5 sm:h-5 sm:w-5 rounded flex items-center justify-center text-xs font-bold leading-none select-none bg-white/5 text-white/30 hover:bg-white/10 hover:text-white active:scale-90 transition-all duration-100 disabled:opacity-10 disabled:pointer-events-none touch-target-sm"
+      style={{ minWidth: 20, minHeight: 20 }}
     >
       {sign}
     </button>
@@ -1016,39 +1017,50 @@ export function TournamentSimulator({ logoMap = {} }: { logoMap?: Record<string,
         style={{ background: "rgba(255,255,255,0.018)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
       >
         {/* Score controls hint */}
-        <div className="px-5 pt-4 pb-0 flex items-center gap-2">
-          <div className="text-[9px] text-white/20 font-display">
-            Click <span className="text-white/35 font-bold px-1 py-0.5 rounded bg-white/5">−</span> and <span className="text-white/35 font-bold px-1 py-0.5 rounded bg-white/5">+</span> to set map scores · reaching 2 resolves the match · <span className="text-white/35">−</span> on a winner's score (2) to undo
+        <div className="px-5 pt-4 pb-0 flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-[9px] text-white/20 font-display leading-relaxed">
+            <span className="text-white/35 font-bold px-1 py-0.5 rounded bg-white/5">−</span>
+            {" "}/{" "}
+            <span className="text-white/35 font-bold px-1 py-0.5 rounded bg-white/5">+</span>
+            {" "}adjust map scores · 2 maps resolves · click <span className="text-white/35">−</span> on a resolved winner to undo
+          </div>
+          <div className="flex items-center gap-1 text-[8px] text-white/15 font-display">
+            <svg className="h-2.5 w-2.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+            </svg>
+            Best-of-3
           </div>
         </div>
 
         <div className="p-4 sm:p-5">
-          {phase === "playin" && (
-            <PlayInBracket
-              state={state.playin}
-              logoMap={logoMap}
-              onScore={(id, w, ml) => dispatch({ type: "SET_PI", matchId: id, winnerId: w, mapsLoser: ml })}
-              onClear={id => dispatch({ type: "CLEAR_PI", matchId: id })}
-            />
-          )}
-          {phase === "swiss" && (
-            <SwissBracket
-              state={state.swiss}
-              logoMap={logoMap}
-              onScore={(id, w, ml) => dispatch({ type: "SET_SW", matchId: id, winnerId: w, mapsLoser: ml })}
-              onClear={id => dispatch({ type: "CLEAR_SW", matchId: id })}
-            />
-          )}
-          {phase === "playoffs" && (
-            <PlayoffsBracket
-              state={state.playoffs}
-              logoMap={logoMap}
-              swissQualifiers={Array(8).fill(null).map((_, i) => swissQuals[i] ?? null)}
-              swissComplete={swissComplete}
-              onScore={(id, w, ml) => dispatch({ type: "SET_PO", matchId: id, winnerId: w, mapsLoser: ml })}
-              onClear={id => dispatch({ type: "CLEAR_PO", matchId: id })}
-            />
-          )}
+          <div key={phase} className="animate-fade-up" style={{ animationDuration: "0.25s" }}>
+            {phase === "playin" && (
+              <PlayInBracket
+                state={state.playin}
+                logoMap={logoMap}
+                onScore={(id, w, ml) => dispatch({ type: "SET_PI", matchId: id, winnerId: w, mapsLoser: ml })}
+                onClear={id => dispatch({ type: "CLEAR_PI", matchId: id })}
+              />
+            )}
+            {phase === "swiss" && (
+              <SwissBracket
+                state={state.swiss}
+                logoMap={logoMap}
+                onScore={(id, w, ml) => dispatch({ type: "SET_SW", matchId: id, winnerId: w, mapsLoser: ml })}
+                onClear={id => dispatch({ type: "CLEAR_SW", matchId: id })}
+              />
+            )}
+            {phase === "playoffs" && (
+              <PlayoffsBracket
+                state={state.playoffs}
+                logoMap={logoMap}
+                swissQualifiers={Array(8).fill(null).map((_, i) => swissQuals[i] ?? null)}
+                swissComplete={swissComplete}
+                onScore={(id, w, ml) => dispatch({ type: "SET_PO", matchId: id, winnerId: w, mapsLoser: ml })}
+                onClear={id => dispatch({ type: "CLEAR_PO", matchId: id })}
+              />
+            )}
+          </div>
         </div>
       </div>
 
