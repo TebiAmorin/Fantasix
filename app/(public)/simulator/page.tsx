@@ -19,7 +19,22 @@ export const metadata: Metadata = {
 
 export default async function SimulatorPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [
+    { data: { user } },
+    { data: teamRows },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from("teams").select("short_name, name, logo_url").not("logo_url", "is", null),
+  ])
+
+  // Build shortName → logoUrl map (lowercase keys for case-insensitive lookup)
+  const logoMap: Record<string, string> = {}
+  for (const t of teamRows ?? []) {
+    if (t.logo_url) {
+      if (t.short_name) logoMap[t.short_name.toLowerCase()] = t.logo_url
+      if (t.name) logoMap[t.name.toLowerCase()] = t.logo_url
+    }
+  }
 
   return (
     <div>
@@ -121,7 +136,7 @@ export default async function SimulatorPage() {
 
       {/* ── Simulator ── */}
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-        <TournamentSimulator />
+        <TournamentSimulator logoMap={logoMap} />
       </div>
 
       {/* ── Auth CTA — only for logged-out visitors ── */}

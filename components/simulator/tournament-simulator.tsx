@@ -1,6 +1,7 @@
 "use client"
 
 import { useReducer, useMemo, useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import {
   createTournamentState, setTMatchResult, clearTMatch, populatePlayoffs,
   ALL_TEAMS, type TournamentState, type TTeam, type TMatch,
@@ -156,24 +157,28 @@ function fullReducer(state: FullState, action: TAction): FullState {
 interface CardTeam {
   id: string
   shortName: string
+  name: string
   color: string
+  logoUrl?: string
   record?: string // "2-1" for Swiss W-L
 }
 
-function tTeamToCard(t: TTeam | null): CardTeam | null {
-  if (!t) return null
-  return { id: t.id, shortName: t.shortName, color: t.color }
+function resolveLogoUrl(shortName: string, name: string, logoMap: Record<string, string>): string | undefined {
+  return logoMap[shortName.toLowerCase()] ?? logoMap[name.toLowerCase()]
 }
 
-function swissToCard(t: SwissTeamState | null): CardTeam | null {
+function swissToCard(t: SwissTeamState | null, logoMap: Record<string, string>): CardTeam | null {
   if (!t) return null
-  return { id: t.id, shortName: t.shortName, color: t.color, record: `${t.wins}-${t.losses}` }
+  return { id: t.id, shortName: t.shortName, name: t.name, color: t.color,
+    logoUrl: resolveLogoUrl(t.shortName, t.name, logoMap), record: `${t.wins}-${t.losses}` }
 }
 
-function getCard(id: string | null, extra: Record<string, TTeam>): CardTeam | null {
+function getCard(id: string | null, extra: Record<string, TTeam>, logoMap: Record<string, string>): CardTeam | null {
   if (!id) return null
   const t = ALL_TEAMS[id] ?? extra[id]
-  return t ? { id: t.id, shortName: t.shortName, color: t.color } : null
+  if (!t) return null
+  return { id: t.id, shortName: t.shortName, name: t.name, color: t.color,
+    logoUrl: resolveLogoUrl(t.shortName, t.name, logoMap) }
 }
 
 // ─── Team badge ───────────────────────────────────────────────────────────────
@@ -185,6 +190,23 @@ function TeamBadge({ team, size = 24 }: { team: CardTeam | null; size?: number }
         className="rounded-lg flex-shrink-0"
         style={{ width: size, height: size, background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
       />
+    )
+  }
+  if (team.logoUrl) {
+    return (
+      <div
+        className="relative rounded-lg flex-shrink-0 overflow-hidden"
+        style={{ width: size, height: size, background: `${team.color}12` }}
+      >
+        <Image
+          src={team.logoUrl}
+          alt={team.shortName}
+          fill
+          className="object-contain p-0.5"
+          sizes={`${size}px`}
+          unoptimized
+        />
+      </div>
     )
   }
   const abbr = team.shortName.slice(0, 3)
@@ -462,10 +484,12 @@ function RoundLabel({ children, active }: { children: React.ReactNode; active?: 
 
 function PlayInBracket({
   state,
+  logoMap,
   onScore,
   onClear,
 }: {
   state: TournamentState
+  logoMap: Record<string, string>
   onScore: (matchId: string, winnerId: string, ml: 0 | 1) => void
   onClear: (matchId: string) => void
 }) {
@@ -478,8 +502,8 @@ function PlayInBracket({
       <MatchCard
         key={id}
         matchId={id}
-        teamA={getCard(match.teamA, et)}
-        teamB={getCard(match.teamB, et)}
+        teamA={getCard(match.teamA, et, logoMap)}
+        teamB={getCard(match.teamB, et, logoMap)}
         globalWinnerId={match.winnerId}
         globalMapsA={match.mapsA}
         globalMapsB={match.mapsB}
@@ -584,10 +608,12 @@ function PlayInBracket({
 
 function SwissBracket({
   state,
+  logoMap,
   onScore,
   onClear,
 }: {
   state: SwissState
+  logoMap: Record<string, string>
   onScore: (matchId: string, winnerId: string, ml: 0 | 1) => void
   onClear: (matchId: string) => void
 }) {
@@ -656,8 +682,8 @@ function SwissBracket({
                           <MatchCard
                             key={sm.id}
                             matchId={sm.id}
-                            teamA={swissToCard(tA)}
-                            teamB={swissToCard(tB)}
+                            teamA={swissToCard(tA, logoMap)}
+                            teamB={swissToCard(tB, logoMap)}
                             globalWinnerId={sm.winnerId}
                             globalMapsA={sm.mapsA}
                             globalMapsB={sm.mapsB}
@@ -729,12 +755,14 @@ function SwissBracket({
 
 function PlayoffsBracket({
   state,
+  logoMap,
   swissQualifiers,
   swissComplete,
   onScore,
   onClear,
 }: {
   state: TournamentState
+  logoMap: Record<string, string>
   swissQualifiers: (string | null)[]
   swissComplete: boolean
   onScore: (matchId: string, winnerId: string, ml: 0 | 1) => void
@@ -787,8 +815,8 @@ function PlayoffsBracket({
       <MatchCard
         key={id}
         matchId={id}
-        teamA={getCard(match.teamA, et)}
-        teamB={getCard(match.teamB, et)}
+        teamA={getCard(match.teamA, et, logoMap)}
+        teamB={getCard(match.teamB, et, logoMap)}
         globalWinnerId={match.winnerId}
         globalMapsA={match.mapsA}
         globalMapsB={match.mapsB}
@@ -873,7 +901,7 @@ function PlayoffsBracket({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function TournamentSimulator() {
+export function TournamentSimulator({ logoMap = {} }: { logoMap?: Record<string, string> }) {
   const [state, dispatch] = useReducer(fullReducer, undefined, createFullState)
   const [phase, setPhase] = useState<Phase>("playin")
 
@@ -966,6 +994,7 @@ export function TournamentSimulator() {
           {phase === "playin" && (
             <PlayInBracket
               state={state.playin}
+              logoMap={logoMap}
               onScore={(id, w, ml) => dispatch({ type: "SET_PI", matchId: id, winnerId: w, mapsLoser: ml })}
               onClear={id => dispatch({ type: "CLEAR_PI", matchId: id })}
             />
@@ -973,6 +1002,7 @@ export function TournamentSimulator() {
           {phase === "swiss" && (
             <SwissBracket
               state={state.swiss}
+              logoMap={logoMap}
               onScore={(id, w, ml) => dispatch({ type: "SET_SW", matchId: id, winnerId: w, mapsLoser: ml })}
               onClear={id => dispatch({ type: "CLEAR_SW", matchId: id })}
             />
@@ -980,6 +1010,7 @@ export function TournamentSimulator() {
           {phase === "playoffs" && (
             <PlayoffsBracket
               state={state.playoffs}
+              logoMap={logoMap}
               swissQualifiers={Array(8).fill(null).map((_, i) => swissQuals[i] ?? null)}
               swissComplete={swissComplete}
               onScore={(id, w, ml) => dispatch({ type: "SET_PO", matchId: id, winnerId: w, mapsLoser: ml })}
