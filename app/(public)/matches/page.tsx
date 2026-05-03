@@ -64,15 +64,21 @@ function StatusBadge({ status }: { status: MatchStatus }) {
   )
 }
 
-function TeamLogo({ team, size = 32 }: { team: { short_name: string; logo_url: string | null } | null; size?: number }) {
+function TeamLogo({ team, size = 36 }: { team: { short_name: string; logo_url: string | null } | null; size?: number }) {
   if (!team) return null
   return (
     <div className="shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
       {team.logo_url ? (
         <Image src={team.logo_url} alt={team.short_name} width={size} height={size} className="object-contain" />
       ) : (
-        <div className="rounded bg-red/10 border border-red/20 flex items-center justify-center text-red font-display font-bold"
-          style={{ width: size, height: size, fontSize: size * 0.28 }}>
+        <div
+          className="rounded-lg flex items-center justify-center text-red font-display font-bold"
+          style={{
+            width: size, height: size, fontSize: size * 0.28,
+            background: "rgba(196,30,58,0.10)",
+            boxShadow: "inset 0 0 0 1px rgba(196,30,58,0.2)",
+          }}
+        >
           {team.short_name.slice(0, 2).toUpperCase()}
         </div>
       )}
@@ -88,63 +94,96 @@ function MatchRow({ match }: { match: Match }) {
 
   return (
     <div className={`
-      relative flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-3.5 sm:py-4 transition-all duration-300 min-h-[60px]
-      ${live ? "bg-live/4" : "hover:bg-white/2"}
+      group relative flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-4 sm:py-5 transition-all duration-300 min-h-[72px]
+      ${live ? "bg-live/5" : "hover:bg-white/[0.025]"}
     `}>
-      {/* Live left bar */}
-      {live && <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-r" style={{ background: "rgba(251,146,60,0.7)" }} />}
-      {/* Completed winner teal accent */}
-      {completed && <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-r" style={{ background: "rgba(0,212,184,0.25)" }} />}
+      {/* Left accent bar */}
+      {live && (
+        <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
+          style={{ background: "linear-gradient(to bottom, rgba(251,146,60,0.9), rgba(251,146,60,0.3))" }} />
+      )}
+      {completed && (
+        <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
+          style={{ background: "linear-gradient(to bottom, rgba(0,212,184,0.4), rgba(0,212,184,0.1))" }} />
+      )}
 
       {/* Teams + score */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 sm:gap-3">
 
           {/* Team A */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-1 justify-end min-w-0">
-            <span className={`font-display text-xs sm:text-sm tracking-wide truncate text-right leading-tight ${
-              winA ? "text-text font-bold" : completed ? "text-text-muted" : "text-text"
-            }`}>
-              {match.team_a?.short_name ?? "TBD"}
-            </span>
-            <TeamLogo team={match.team_a} size={24} />
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-1 justify-end min-w-0">
+            <div className="min-w-0 text-right">
+              <span className={`font-display text-sm sm:text-base tracking-wide leading-tight block truncate ${
+                winA ? "text-text font-bold" : completed ? "text-text-muted" : "text-text"
+              }`}>
+                {match.team_a?.short_name ?? "TBD"}
+              </span>
+              {winA && (
+                <span className="text-[9px] text-success/70 font-display uppercase tracking-[0.15em]">Winner</span>
+              )}
+            </div>
+            <TeamLogo team={match.team_a} size={36} />
           </div>
 
-          {/* Score or vs */}
-          <div className="shrink-0 text-center w-12 sm:w-16">
+          {/* Score / vs */}
+          <div className="shrink-0 text-center" style={{ minWidth: "52px" }}>
             {completed ? (
-              <span className="font-stats text-sm sm:text-base font-bold tabular-nums" style={{ color: "#EEF2FF" }}>
-                {match.team_a_maps_won}
-                <span className="text-text-dim mx-0.5 sm:mx-1">–</span>
-                {match.team_b_maps_won}
-              </span>
+              <div
+                className="rounded-lg px-2 py-1 inline-flex items-center gap-1"
+                style={{ background: "rgba(255,255,255,0.04)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)" }}
+              >
+                <span className={`font-stats text-base font-bold tabular-nums ${winA ? "text-text" : "text-text-muted"}`}>
+                  {match.team_a_maps_won}
+                </span>
+                <span className="text-text-dim/50 text-xs">–</span>
+                <span className={`font-stats text-base font-bold tabular-nums ${winB ? "text-text" : "text-text-muted"}`}>
+                  {match.team_b_maps_won}
+                </span>
+              </div>
             ) : live ? (
-              <span className="font-stats text-[10px] sm:text-xs font-bold text-live tabular-nums">LIVE</span>
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="font-stats text-[11px] font-bold text-live tabular-nums">LIVE</span>
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-live opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-live" />
+                </span>
+              </div>
             ) : (
-              <span className="font-stats text-xs text-text-dim">vs</span>
+              <span
+                className="font-stats text-xs text-text-dim rounded-md px-2 py-1"
+                style={{ background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+              >
+                VS
+              </span>
             )}
           </div>
 
           {/* Team B */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
-            <TeamLogo team={match.team_b} size={24} />
-            <span className={`font-display text-xs sm:text-sm tracking-wide truncate leading-tight ${
-              winB ? "text-text font-bold" : completed ? "text-text-muted" : "text-text"
-            }`}>
-              {match.team_b?.short_name ?? "TBD"}
-            </span>
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+            <TeamLogo team={match.team_b} size={36} />
+            <div className="min-w-0">
+              <span className={`font-display text-sm sm:text-base tracking-wide leading-tight block truncate ${
+                winB ? "text-text font-bold" : completed ? "text-text-muted" : "text-text"
+              }`}>
+                {match.team_b?.short_name ?? "TBD"}
+              </span>
+              {winB && (
+                <span className="text-[9px] text-success/70 font-display uppercase tracking-[0.15em]">Winner</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Right side: status + time + format */}
-      <div className="flex flex-col items-end gap-1 shrink-0">
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
         <StatusBadge status={match.status} />
         <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-text-dim">
-          <span className="font-stats uppercase">{match.format}</span>
+          <span className="font-stats uppercase tracking-wider opacity-60">{match.format}</span>
           {match.scheduled_at && !completed && !live && (
             <>
-              <span className="hidden sm:inline">·</span>
+              <span className="opacity-30">·</span>
               <span className="hidden sm:inline">
                 <MatchTime scheduledAt={match.scheduled_at} />
               </span>
@@ -153,7 +192,7 @@ function MatchRow({ match }: { match: Match }) {
         </div>
         {/* Time on mobile — second line */}
         {match.scheduled_at && !completed && !live && (
-          <div className="sm:hidden">
+          <div className="sm:hidden text-[9px] text-text-dim">
             <MatchTime scheduledAt={match.scheduled_at} />
           </div>
         )}
@@ -165,8 +204,9 @@ function MatchRow({ match }: { match: Match }) {
           href={match.external_stats_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 text-text-dim hover:text-[#00D4B8] transition-colors touch-target flex items-center justify-center"
-          title="Full stats"
+          className="shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-text-dim hover:text-success transition-all duration-200 hover:bg-success/10 touch-target"
+          title="Full match stats"
+          style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
         >
           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -286,29 +326,65 @@ export default async function MatchesPage() {
 
       {/* Phases */}
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-        {phases.map(phase => (
-          <section key={phase.id} className="space-y-3">
-            <div className="flex items-center gap-3">
-              <h2 className="font-display text-sm text-text uppercase tracking-wide">{phase.name}</h2>
-              <div className="flex-1 h-px bg-white/5" />
-              <span className="text-[10px] text-text-dim font-stats">
-                {phase.matches.filter(m => m.status === "completed").length}/{phase.matches.length}
-              </span>
-            </div>
+        {phases.map(phase => {
+          const completedInPhase = phase.matches.filter(m => m.status === "completed").length
+          const liveInPhase      = phase.matches.filter(m => m.status === "live").length
+          const pct = phase.matches.length > 0
+            ? Math.round((completedInPhase / phase.matches.length) * 100)
+            : 0
 
-            <div
-              className="rounded-2xl overflow-hidden divide-y divide-white/5"
-              style={{
-                background: "rgba(255,255,255,0.025)",
-                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)",
-              }}
-            >
-              {phase.matches.map(match => (
-                <MatchRow key={match.id} match={match} />
-              ))}
-            </div>
-          </section>
-        ))}
+          return (
+            <section key={phase.id} className="space-y-3">
+              {/* Phase header */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
+                  <h2 className="font-display text-sm sm:text-base text-text uppercase tracking-wide">{phase.name}</h2>
+                  {liveInPhase > 0 && (
+                    <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-display font-bold uppercase tracking-widest text-live border border-live/20 bg-live/6">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-live opacity-75" />
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-live" />
+                      </span>
+                      Live
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 h-px bg-white/5" />
+                <div className="flex items-center gap-2">
+                  {/* Progress bar */}
+                  <div className="hidden sm:flex items-center gap-1.5">
+                    <div className="w-16 h-1 rounded-full bg-white/6 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${pct}%`,
+                          background: pct === 100
+                            ? "rgba(0,212,184,0.6)"
+                            : "rgba(245,200,66,0.5)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-text-dim font-stats tabular-nums">
+                    {completedInPhase}/{phase.matches.length}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className="rounded-2xl overflow-hidden divide-y divide-white/4"
+                style={{
+                  background: "rgba(255,255,255,0.02)",
+                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)",
+                }}
+              >
+                {phase.matches.map(match => (
+                  <MatchRow key={match.id} match={match} />
+                ))}
+              </div>
+            </section>
+          )
+        })}
 
         {phases.length === 0 && (
           <div className="py-16 border border-dashed border-white/8 rounded-2xl text-center space-y-3">

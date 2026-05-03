@@ -405,16 +405,23 @@ export default async function HomePage() {
       <section className="relative py-24 border-t border-white/4">
         <div className="absolute inset-x-0 top-0 h-px"
           style={{ background: "linear-gradient(to right, transparent, rgba(196,30,58,0.25), transparent)" }} />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
+        {/* Subtle red glow center */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-32 pointer-events-none"
+          style={{ background: "rgba(196,30,58,0.05)", filter: "blur(60px)" }} />
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-14">
 
           <div className="text-center space-y-2">
             <div className="badge-eyebrow mx-auto w-fit">The field</div>
             <h2 className="font-display text-3xl sm:text-4xl text-text tracking-tight">
               20 Teams. 6 Regions.
             </h2>
+            <p className="text-sm text-text-muted max-w-md mx-auto">
+              The world&apos;s best R6 Siege rosters competing on one stage.
+            </p>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-10">
             {REGIONS.map(({ label, teams: regionTeams }) => {
               const dbTeams = teamList.filter(t =>
                 regionTeams.some(s => (t.short_name ?? "").toUpperCase() === s.toUpperCase())
@@ -424,29 +431,75 @@ export default async function HomePage() {
                 : regionTeams.map(s => ({ id: s, short_name: s, name: s, logo_url: null, region: label }))
 
               return (
-                <div key={label} className="space-y-3">
-                  <p className="text-[9px] text-text-dim uppercase tracking-[0.3em] font-display pl-1">{label}</p>
-                  <div className="flex flex-wrap gap-2">
+                <div key={label} className="space-y-4">
+                  {/* Region label */}
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="text-[9px] font-display font-bold uppercase tracking-[0.3em] px-2.5 py-1 rounded-full"
+                      style={{
+                        color: "rgba(196,30,58,0.8)",
+                        background: "rgba(196,30,58,0.07)",
+                        boxShadow: "inset 0 0 0 1px rgba(196,30,58,0.15)",
+                      }}
+                    >
+                      {label}
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.04)" }} />
+                    <span className="text-[9px] text-text-dim font-stats">{display.length} teams</span>
+                  </div>
+
+                  {/* Team cards */}
+                  <div className="flex flex-wrap gap-2.5">
                     {display.map(team => (
                       <div
                         key={team.id}
-                        className="flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 transition-all duration-300 hover:bg-white/6"
-                        style={{ background: "rgba(255,255,255,0.03)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)" }}
+                        className="group relative rounded-[14px] p-[1px] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:scale-[1.03]"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
+                        }}
                       >
-                        {team.logo_url ? (
-                          <Image
-                            src={team.logo_url} alt={team.short_name}
-                            width={22} height={22}
-                            className="object-contain"
-                          />
-                        ) : (
-                          <div className="h-5 w-5 rounded bg-red/10 border border-red/20 flex items-center justify-center">
-                            <span className="font-display text-red text-[7px] font-bold leading-none">
-                              {team.short_name.slice(0, 2).toUpperCase()}
-                            </span>
+                        <div
+                          className="flex items-center gap-3 rounded-[13px] px-4 py-3 transition-all duration-300"
+                          style={{
+                            background: "rgba(13,14,20,0.95)",
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
+                          }}
+                        >
+                          {/* Logo */}
+                          <div className="h-9 w-9 shrink-0 flex items-center justify-center">
+                            {team.logo_url ? (
+                              <Image
+                                src={team.logo_url} alt={team.short_name}
+                                width={36} height={36}
+                                className="object-contain transition-all duration-300 group-hover:scale-110"
+                              />
+                            ) : (
+                              <div
+                                className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:bg-red/15"
+                                style={{
+                                  background: "rgba(196,30,58,0.08)",
+                                  boxShadow: "inset 0 0 0 1px rgba(196,30,58,0.18)",
+                                }}
+                              >
+                                <span className="font-display text-red text-[9px] font-bold leading-none">
+                                  {team.short_name.slice(0, 2).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        <span className="font-display text-xs text-text-muted tracking-wide">{team.short_name}</span>
+
+                          {/* Name */}
+                          <div>
+                            <p className="font-display text-xs sm:text-sm text-text tracking-wide leading-none">
+                              {team.short_name}
+                            </p>
+                            {team.name !== team.short_name && (
+                              <p className="text-[9px] text-text-dim mt-0.5 tracking-wide leading-none truncate max-w-[100px]">
+                                {team.name}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
